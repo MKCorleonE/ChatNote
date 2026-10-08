@@ -115,7 +115,7 @@
 
 ### v0.2.0 · 2026-10-08 · 国际化基础
 
-交付：[安装程序](../releases/ChatNote_0.2.0_x64-setup.exe)、[直接启动程序](../releases/ChatNote_0.2.0.exe)。
+交付：[安装程序](../releases/archive/v0.2.0/ChatNote_0.2.0_x64-setup.exe)、[直接启动程序](../releases/archive/v0.2.0/ChatNote_0.2.0.exe)。
 
 - 提供 English / 简体中文 / 繁體中文界面，在 Settings → Interface language 立即切换并保存。
 - 主线、批注、追问树、历史、设置、连接状态/额度、分类错误、确认提示及导出说明覆盖三语，数字与日期随语言格式化。
@@ -273,5 +273,6 @@ OpenAI 认证、Windows 安装包签名、商店审核分别记录，不能用�
 关联 idea：Ixx、Iyy
 交付文件：
 ```
+
 
 
