@@ -235,5 +235,16 @@
   "Invalid connection profiles.": "Invalid connection profiles.",
   "Invalid or unsafe connection profile.": "Invalid or unsafe connection profile.",
   "Active connection is missing.": "Active connection is missing.",
-  "Branch cycle": "Branch cycle"
+  "Branch cycle": "Branch cycle",
+  "Waiting for browser authorization…": "Waiting for browser authorization…",
+  "Cancel sign-in": "Cancel sign-in",
+  "Check sign-in connection": "Check sign-in connection",
+  "Sign-in service is reachable. Browser authorization can still fail independently.": "Sign-in service is reachable. Browser authorization can still fail independently.",
+  "If the browser authorization page times out, cancel this attempt, close the old authorization tab, and start sign-in again. Check that this browser can reach ChatGPT. Your saved registration is kept.": "If the browser authorization page times out, cancel this attempt, close the old authorization tab, and start sign-in again. Check that this browser can reach ChatGPT. Your saved registration is kept.",
+  "Sign-in cancelled": "Sign-in cancelled",
+  "Close the old authorization tab before trying again. Your saved registration and conversations are kept.": "Close the old authorization tab before trying again. Your saved registration and conversations are kept.",
+  "Browser authorization timed out": "Browser authorization timed out",
+  "Close the old authorization tab and start sign-in again. If the browser page also times out, check its connection to ChatGPT. Your saved registration is kept.": "Close the old authorization tab and start sign-in again. If the browser page also times out, check its connection to ChatGPT. Your saved registration is kept.",
+  "Could not reach the sign-in service": "Could not reach the sign-in service",
+  "Check your network and try again later. This check uses no model quota and does not change your saved connection.": "Check your network and try again later. This check uses no model quota and does not change your saved connection."
 }

@@ -1,5 +1,7 @@
 # ChatNote
 
+源码与版本历史保存在 [ChatNote 私有仓库](https://github.com/MKCorleonE/ChatNote)。开发与发布步骤见 [GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md)。
+
 ChatNote 是独立的跨平台 AI 对话与笔记软件项目，目标平台为 **iPadOS、macOS、iOS、Windows、Android**。
 
 核心体验：沿主线学习，选中回答中的词语或段落建立可持续追问的批注，在批注内继续深入，并通过追问树与笔记回顾内容。
@@ -16,11 +18,11 @@ ChatNote 是独立的跨平台 AI 对话与笔记软件项目，目标平台为 
 
 当前实现：TypeScript + React 界面、Tauri 2 应用外壳、Rust 系统能力与 SQLite 本地存储。
 
-Windows v0.2.0 内测版已构建，新增英语/简体/繁体界面，设置中的语言切换立即生效并保存。除主线/递归批注、追问树与本地保存外，新增 DeepSeek/Qwen 预设、独立连接档案、一键切换、模型目录检查、DeepSeek 余额查询和分类错误。2026-10-08 用户已验证旧版 ChatGPT 套餐登录与对话；国内真实账号及连接生命周期仍待分别实测。
+Windows v0.2.1 内测版已构建，新增登录取消、重试恢复说明与手动检查登录连接，新增英语/简体/繁体界面，设置中的语言切换立即生效并保存。除主线/递归批注、追问树与本地保存外，新增 DeepSeek/Qwen 预设、独立连接档案、一键切换、模型目录检查、DeepSeek 余额查询和分类错误。2026-10-08 用户已验证旧版 ChatGPT 套餐登录与对话；国内真实账号及连接生命周期仍待分别实测。
 
-- [v0.2.0 Windows 安装包](releases/ChatNote_0.2.0_x64-setup.exe)
-- [v0.2.0 可直接启动的程序](releases/ChatNote_0.2.0.exe)
-- [v0.2.0 使用与验证](docs/V0.2.0_VALIDATION.md)
+- [v0.2.1 Windows 安装包](releases/ChatNote_0.2.1_x64-setup.exe)
+- [v0.2.1 可直接启动的程序](releases/ChatNote_0.2.1.exe)
+- [v0.2.1 使用与验证](docs/V0.2.1_VALIDATION.md)
 - [版本保留规则](docs/RELEASE_POLICY.md)
 - [国际化维护说明](docs/INTERNATIONALIZATION.md)
 - [v0.1.0 基线验证](docs/BUILD_AND_VALIDATION.md)

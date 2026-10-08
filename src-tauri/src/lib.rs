@@ -13,6 +13,7 @@ pub struct Runtime {
     db: Mutex<rusqlite::Connection>,
     jobs: Mutex<HashMap<String, watch::Sender<bool>>>,
     login: tokio::sync::Mutex<()>,
+    login_cancel: Mutex<Option<watch::Sender<bool>>>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -39,6 +40,7 @@ pub fn run() {
                 db: Mutex::new(db),
                 jobs: Mutex::new(HashMap::new()),
                 login: tokio::sync::Mutex::new(()),
+                login_cancel: Mutex::new(None),
             });
             Ok(())
         })
@@ -49,6 +51,8 @@ pub fn run() {
             auth::set_api_key,
             auth::profile_status,
             auth::sign_in_chatgpt,
+            auth::cancel_sign_in,
+            auth::check_sign_in_service,
             auth::sign_out_chatgpt,
             network::list_models,
             network::generate,

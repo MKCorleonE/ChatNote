@@ -28,6 +28,8 @@ export async function profileStatus(profile:ConnectionProfile):Promise<ProfileSt
 export async function usage(profile:ConnectionProfile):Promise<UsageInfo>{return invoke('connection_usage',{profileId:profile.id,provider:profile.provider,endpoint:profile.endpoint,preset:profile.preset});}
 export async function openUrl(url:string){if(desktop){const {openUrl}=await import('@tauri-apps/plugin-opener');await openUrl(url);}else window.open(url,'_blank','noopener,noreferrer');}
 export async function signIn(newAccount = false, language: Language = 'en'): Promise<Connection> { if (!desktop) throw new Error('Use the desktop app to connect ChatGPT.'); return invoke<Connection>('sign_in_chatgpt', { newAccount, language }); }
+export async function cancelSignIn(): Promise<void> { if (desktop) await invoke('cancel_sign_in'); }
+export async function checkSignInService(): Promise<string> { if (!desktop) throw new Error('Use the desktop app to connect ChatGPT.'); return invoke('check_sign_in_service'); }
 export async function signOut(): Promise<string> { return desktop ? invoke<string>('sign_out_chatgpt') : 'Disconnected.'; }
 export async function generate(req: Generation, onEvent: (event: StreamEvent) => void, signal: AbortSignal): Promise<void> {
   if (!desktop) throw new Error('This browser preview supports reading and annotations. Use the desktop app for model requests.');

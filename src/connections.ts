@@ -22,6 +22,9 @@ export function usageUrl(p:ConnectionProfile):string { if(p.provider==='chatgpt'
 export function friendlyError(input:unknown):{ title:string; message:string; detail:string; quota:boolean } {
   const detail=typeof input==='string'?input:input instanceof Error?input.message:JSON.stringify(input);
   const text=detail.toLowerCase();const result=(title:string,message:string,quota=false)=>({title,message,detail,quota});
+  if(/sign-in was cancelled/.test(text))return result('Sign-in cancelled','Close the old authorization tab before trying again. Your saved registration and conversations are kept.');
+  if(/sign-in timed out/.test(text))return result('Browser authorization timed out','Close the old authorization tab and start sign-in again. If the browser page also times out, check its connection to ChatGPT. Your saved registration is kept.');
+  if(/sign-in service/.test(text))return result('Could not reach the sign-in service','Check your network and try again later. This check uses no model quota and does not change your saved connection.');
   if(/save your api key|not connected|connect your chatgpt|missing.*key/.test(text))return result('Not connected','Save an API key or connect ChatGPT in Settings first.');
   if(/subscription_sharing_usage_limit_exceeded|insufficient_quota|quota.exceeded|balance.*insufficient|402/.test(text))return result('Usage limit reached','This connection cannot currently make new requests. Check its provider usage page or select another saved connection. No automatic billing fallback was used.',true);
   if(/429|rate.?limit|too many requests/.test(text))return result('Temporarily limited','The provider is limiting requests. Wait and try again, or select another connection. A 429 alone does not establish that your full plan is empty.',true);

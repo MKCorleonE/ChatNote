@@ -235,5 +235,16 @@
   "Invalid connection profiles.": "保存的连接配置无效。",
   "Invalid or unsafe connection profile.": "连接配置无效，或包含不应进入备份的凭据。",
   "Active connection is missing.": "找不到当前连接。",
-  "Branch cycle": "批注的父子关系形成了循环。"
+  "Branch cycle": "批注的父子关系形成了循环。",
+  "Waiting for browser authorization…": "等待浏览器授权…",
+  "Cancel sign-in": "取消登录",
+  "Check sign-in connection": "检查登录连接",
+  "Sign-in service is reachable. Browser authorization can still fail independently.": "可以连接登录服务。浏览器授权仍可能单独失败。",
+  "If the browser authorization page times out, cancel this attempt, close the old authorization tab, and start sign-in again. Check that this browser can reach ChatGPT. Your saved registration is kept.": "如果浏览器授权页超时，请取消本次登录、关闭旧授权页后重新登录，并检查该浏览器能否打开 ChatGPT。已有注册信息会保留。",
+  "Sign-in cancelled": "登录已取消",
+  "Close the old authorization tab before trying again. Your saved registration and conversations are kept.": "请关闭旧授权页后重试。已有注册信息和聊天会保留。",
+  "Browser authorization timed out": "浏览器授权超时",
+  "Close the old authorization tab and start sign-in again. If the browser page also times out, check its connection to ChatGPT. Your saved registration is kept.": "请关闭旧授权页后重新登录。如果浏览器页面也超时，请检查该浏览器与 ChatGPT 的连接。已有注册信息会保留。",
+  "Could not reach the sign-in service": "无法连接登录服务",
+  "Check your network and try again later. This check uses no model quota and does not change your saved connection.": "请检查网络或稍后重试。此检查不使用模型额度，也不改动已有连接。"
 }

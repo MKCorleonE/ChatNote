@@ -453,8 +453,78 @@ pub async fn sign_in_chatgpt(
         .login
         .try_lock()
         .map_err(|_| "Another sign-in is already in progress")?;
+    let (tx, mut cancelled) = tokio::sync::watch::channel(false);
+    *state
+        .login_cancel
+        .lock()
+        .map_err(|_| "Sign-in lock failed")? = Some(tx);
+    let _reset = LoginAttempt(&state.login_cancel);
+    tokio::select! {
+        biased;
+        _ = cancelled.changed() => Err("Sign-in was cancelled. Your previous connection was kept.".into()),
+        result = sign_in_inner(app, &state, new_account, language) => result,
+    }
+}
+
+struct LoginAttempt<'a>(&'a std::sync::Mutex<Option<tokio::sync::watch::Sender<bool>>>);
+impl Drop for LoginAttempt<'_> {
+    fn drop(&mut self) {
+        if let Ok(mut active) = self.0.lock() {
+            active.take();
+        }
+    }
+}
+
+#[tauri::command]
+pub fn cancel_sign_in(state: State<'_, Runtime>) -> Result<(), String> {
+    if let Some(active) = state
+        .login_cancel
+        .lock()
+        .map_err(|_| "Sign-in lock failed")?
+        .as_ref()
+    {
+        let _ = active.send(true);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn check_sign_in_service() -> Result<String, String> {
+    let client = reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(10))
+        .timeout(std::time::Duration::from_secs(15))
+        .redirect(reqwest::redirect::Policy::none())
+        .user_agent(concat!("ChatNote/", env!("CARGO_PKG_VERSION")))
+        .build()
+        .map_err(|_| "Could not initialize network client")?;
+    let response = client
+        .get(format!("{AUTH}/.well-known/openid-configuration"))
+        .send()
+        .await
+        .map_err(|error| {
+            if error.is_timeout() {
+                "Sign-in service connection timed out. Check your network and retry."
+            } else {
+                "Sign-in service connection failed. Check your network and retry."
+            }
+        })?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "Sign-in service returned HTTP {}. Check your network or try again later.",
+            response.status().as_u16()
+        ));
+    }
+    Ok("Sign-in service is reachable. Browser authorization can still fail independently.".into())
+}
+
+async fn sign_in_inner(
+    app: AppHandle,
+    state: &Runtime,
+    new_account: Option<bool>,
+    language: Option<String>,
+) -> Result<Connection, String> {
     let _auth_guard = AUTH_SERIAL.lock().await;
-    let host = storage::host_id(&state)?;
+    let host = storage::host_id(state)?;
     let existing = if new_account == Some(true) {
         None
     } else {
@@ -648,6 +718,22 @@ pub async fn sign_in_chatgpt(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn cancelled_attempt_cleans_up_and_does_not_cancel_a_later_attempt() {
+        let (first, mut old) = tokio::sync::watch::channel(false);
+        let active = std::sync::Mutex::new(Some(first));
+        {
+            let _attempt = LoginAttempt(&active);
+            active.lock().unwrap().as_ref().unwrap().send(true).unwrap();
+            assert!(old.has_changed().unwrap());
+            assert!(*old.borrow_and_update());
+        }
+        assert!(active.lock().unwrap().is_none());
+        let (next, fresh) = tokio::sync::watch::channel(false);
+        *active.lock().unwrap() = Some(next);
+        assert!(!fresh.has_changed().unwrap());
+        assert!(!*fresh.borrow());
+    }
     #[test]
     fn callback_languages_and_fallback() {
         for (lang, success, failure) in [

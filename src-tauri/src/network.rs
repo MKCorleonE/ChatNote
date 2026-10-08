@@ -32,7 +32,7 @@ pub fn client() -> Result<reqwest::Client, String> {
         .connect_timeout(std::time::Duration::from_secs(20))
         .timeout(std::time::Duration::from_secs(240))
         .redirect(reqwest::redirect::Policy::none())
-        .user_agent("ChatNote/0.1.1")
+        .user_agent(concat!("ChatNote/", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(|_| "Could not initialize network client".into())
 }

@@ -20,6 +20,13 @@ export default function Settings({
   onLanguageChange
 }: Props) {
   const { t, n, date, ui } = useI18n();
+  const [signingIn, setSigningIn] = useState(false);
+  const [signInCheck, setSignInCheck] = useState('');
+  async function login(newAccount: boolean) {
+    setSigningIn(true);
+    try { await bridge.signIn(newAccount, resolveLanguage(config.language)); setStatus(await bridge.profileStatus(profile)); setCatalog([]); edit({checkedAt:undefined,checkState:undefined,checkMessage:undefined}); }
+    finally { setSigningIn(false); }
+  }
   const [config, setConfig] = useState(() => migrateConnections(value)),
     [editingId, setEditingId] = useState(() => migrateConnections(value).activeProfileId!),
     [preset, setPreset] = useState<Preset>('deepseek');
@@ -153,13 +160,7 @@ export default function Settings({
           })} /></label><p className="small muted">{t(source.hint)}</p>
     <div className={`connection-status ${ready ? 'ready' : ''}`}><span className="status-dot" /><span>{t(stateText)}</span>{status?.email && <small>{status.email}</small>}</div>
     {profile.provider === 'chatgpt' ? <div className="connection-card"><button className="primary" disabled={busy || !bridge.desktop} onClick={() => action(async () => {
-            await bridge.signIn(false, resolveLanguage(config.language));
-            setStatus(await bridge.profileStatus(profile));
-            edit({
-              checkedAt: undefined,
-              checkState: undefined,
-              checkMessage: undefined
-            });
+            await login(false);
           })}>{t("Continue with ChatGPT")}<ArrowUpRight size={14} /></button>{status?.connected && <button className="text-button" disabled={busy} onClick={() => action(async () => {
             onNotice(await bridge.signOut());
             setStatus(await bridge.profileStatus(profile));
@@ -170,15 +171,8 @@ export default function Settings({
               checkMessage: undefined
             });
           })}>{t("Disconnect")}</button>}<button className="text-button" disabled={busy || !bridge.desktop} onClick={() => action(async () => {
-            await bridge.signIn(true, resolveLanguage(config.language));
-            setStatus(await bridge.profileStatus(profile));
-            setCatalog([]);
-            edit({
-              checkedAt: undefined,
-              checkState: undefined,
-              checkMessage: undefined
-            });
-          })}>{t("Connect a different account")}</button><p className="small muted">{t("One active ChatGPT account. This connection uses its existing allowance and does not import its conversations.")}</p></div> : <>
+            await login(true);
+          })}>{t("Connect a different account")}</button>{signingIn && <><p role="status">{t('Waiting for browser authorization…')}</p><button className="text-button" onClick={()=>void bridge.cancelSignIn().catch(e=>setError(friendlyError(e)))}>{t('Cancel sign-in')}</button></>}<button className="text-button" disabled={busy || !bridge.desktop} onClick={()=>action(async()=>{setSignInCheck('');setSignInCheck(await bridge.checkSignInService());})}>{t('Check sign-in connection')}</button>{signInCheck && <p className="small muted" role="status">{t(signInCheck)}</p>}<p className="small muted">{t('If the browser authorization page times out, cancel this attempt, close the old authorization tab, and start sign-in again. Check that this browser can reach ChatGPT. Your saved registration is kept.')}</p><p className="small muted">{t("One active ChatGPT account. This connection uses its existing allowance and does not import its conversations.")}</p></div> : <>
       {profile.provider === 'compatible' && <label>{t("API base URL")}<input aria-label={t("API base URL")} disabled={busy} value={profile.endpoint} onChange={e => {
               edit({
                 endpoint: e.target.value
@@ -229,7 +223,7 @@ export default function Settings({
             ...c,
             contextBudget: Number(e.target.value)
           }))}>{[16000, 48000, 96000, 192000].map(count => <option key={count} value={count}>{t('characterCount',{count:n(count)})}</option>)}</select><span className="small muted">{t("A local character budget, not an exact token limit. Older content may be abbreviated; originals remain saved.")}</span></label>
-    </div><footer><span className="small muted">ChatNote · 0.2.0</span><button className="primary" disabled={busy || config.profiles!.some(p => !p.name.trim())} onClick={() => action(async () => {
+    </div><footer><span className="small muted">ChatNote · 0.2.1</span><button className="primary" disabled={busy || config.profiles!.some(p => !p.name.trim())} onClick={() => action(async () => {
           await saveKey();
           await onChange(syncActive(config));
           onClose();
