@@ -6,7 +6,7 @@ ChatNote 是独立的跨平台 AI 对话与笔记软件项目，目标平台为 
 
 核心体验：沿主线学习，选中回答中的词语或段落建立可持续追问的批注，在批注内继续深入，并通过追问树与笔记回顾内容。
 
-已确认沿用现有原型、Windows 先跑通、预留全部平台。界面以当前对话与右侧追问为中心，弱化左侧历史列表，保持简洁且有设计感；具体收起交互仍待原型比较。
+已确认沿用现有原型、Windows 先跑通、预留全部平台。界面以当前对话与右侧追问为中心，弱化左侧历史列表，保持简洁且有设计感；历史通过胶囊按钮按需展开，选中会话后收回。
 
 项目于 2026-10-08 从 CodexAnnotation 更名为 ChatNote，进入独立产品规划阶段。当前目录名仍为 `D:\CodexAnnotation`。
 
@@ -20,16 +20,18 @@ ChatNote 是独立的跨平台 AI 对话与笔记软件项目，目标平台为 
 
 v0.3.0 扩大代码/公式/格式选区，补齐常见公式写法，新增私人批注笔记、发送前上下文确认和回答状态小字，并完善阅读位置与会话续期提示。
 
-Windows v0.4.0 内测版已构建：右侧批注面板可调宽，输入框内直接切换连接/模型/思考强度，连接后自动读取模型目录并缓存；Enter/Alt+Enter、输入法保护和可定制 RGB 光效已实现。三语界面、主线/递归批注、私人笔记及原文锚点保留。用户已确认 v0.3.1 升级保留登录；本版真实升级与厂商请求仍分别验收。
+Windows v0.5.0 内测版：加号新建、三横线历史、齿轮设置置于同一胶囊，加入轻按压与面板开合动效。设置按模型与连接、阅读与上下文、外观、数据与隐私分区，并提供关于、更新日志和可搜索的开源许可。现有对话、批注锚点、笔记、草稿、连接及凭据存储保留；本版安装升级与手感仍待用户验收。
 
-- [v0.4.0 Windows 安装包](https://github.com/MKCorleonE/ChatNote/releases/download/v0.4.0/ChatNote_0.4.0_x64-setup.exe)
-- [v0.4.0 可直接启动的程序](https://github.com/MKCorleonE/ChatNote/releases/download/v0.4.0/ChatNote_0.4.0.exe)
-- [v0.4.0 使用与验证](docs/V0.4.0_VALIDATION.md)
+- [v0.5.0 Windows 安装包](releases/ChatNote_0.5.0_x64-setup.exe)
+- [v0.5.0 可直接启动的程序](releases/ChatNote_0.5.0.exe)
+- [v0.5.0 使用与验证](docs/V0.5.0_VALIDATION.md)
 - [版本保留规则](docs/RELEASE_POLICY.md)
 - [国际化维护说明](docs/INTERNATIONALIZATION.md)
 - [v0.1.0 基线验证](docs/BUILD_AND_VALIDATION.md)
 
-升级时先退出旧版，再启动新版或运行安装包。原程序标识、数据库与 ChatGPT 登录路径保留。本机常用目录保留 v0.4.0 和 v0.3.1，v0.3.0 及更早版本保存在 releases/archive。私有下载链接需要登录有仓库权限的 GitHub 账号。
+当前使用本地交付文件；[升级 PR #1](https://github.com/MKCorleonE/ChatNote/pull/1) 已推送，合入 main 和私有 Release 等待明确审批及云端检查。
+
+升级时先关闭旧版，再启动新版或安装，不必先断开账号。常用 releases 目录保留 v0.5.0 和 v0.4.0，v0.3.1 及更早版本归档保留。私有下载需要有仓库权限的 GitHub 账号。
 
 开发入口在根目录：`npm run dev`；界面测试为 `npm test`；桌面构建为 `npm run desktop:build`。`prototype` 目录保留早期独立演示。
 

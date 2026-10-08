@@ -1,5 +1,5 @@
 import { vi,test,expect,beforeEach } from 'vitest';
-import { render,screen,waitFor } from '@testing-library/react';
+import { render,screen,waitFor,within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { defaultSettings } from './core';
 import { migrateConnections } from './connections';
@@ -7,6 +7,50 @@ import type { ConnectionProfile,Settings as Config } from './types';
 const fake=vi.hoisted(()=>({keys:new Map<string,{key:string;endpoint:string}>(),models:vi.fn(),usage:vi.fn(),generate:vi.fn(),setKey:vi.fn(),signIn:vi.fn(),cancelSignIn:vi.fn(),checkSignInService:vi.fn()}));
 vi.mock('./bridge',()=>({desktop:true,profileStatus:async(p:ConnectionProfile)=>({hasKey:fake.keys.has(p.id),endpointMatches:!fake.keys.has(p.id)||fake.keys.get(p.id)!.endpoint===p.endpoint,connected:p.provider==='chatgpt'||fake.keys.has(p.id),planUsage:p.provider==='chatgpt',email:p.provider==='chatgpt'?'test@example.invalid':undefined}),setKey:async(provider:string,key:string,endpoint:string,id:string)=>{fake.setKey(provider,key,endpoint,id);if(key)fake.keys.set(id,{key,endpoint});else fake.keys.delete(id);},models:(...args:unknown[])=>fake.models(...args),usage:(...args:unknown[])=>fake.usage(...args),generate:fake.generate,openUrl:vi.fn(),signIn:fake.signIn,cancelSignIn:fake.cancelSignIn,checkSignInService:fake.checkSignInService,signOut:vi.fn()}));
 import Settings from './Settings';
+
+test('Settings navigation retains edits across pages and saves them without inference or exposing credentials',async()=>{
+  const user=userEvent.setup(),value=migrateConnections(defaultSettings),original=structuredClone(value),saved=vi.fn();
+  render(<Settings value={value} onChange={saved} onClose={()=>{}} onNotice={()=>{}}/>);
+  await user.clear(screen.getByLabelText('Connection name'));await user.type(screen.getByLabelText('Connection name'),'My connection');
+  await user.type(screen.getByLabelText('API key'),'UNSAVED_TEST_KEY');
+  await user.click(screen.getByRole('button',{name:'Reading & context'}));
+  await user.selectOptions(screen.getByLabelText('Context budget'),'96000');
+  await user.click(screen.getByRole('button',{name:'Appearance'}));
+  await user.selectOptions(screen.getByLabelText('Theme'),'light');
+  await user.click(screen.getByRole('button',{name:'Models & connections'}));
+  expect((screen.getByLabelText('Connection name') as HTMLInputElement).value).toBe('My connection');
+  expect((screen.getByLabelText('API key') as HTMLInputElement).value).toBe('UNSAVED_TEST_KEY');
+  expect(value).toEqual(original);expect(saved).not.toHaveBeenCalled();
+  await user.click(screen.getByRole('button',{name:'Done'}));
+  await waitFor(()=>expect(saved.mock.calls.at(-1)?.[0].theme).toBe('light'));
+  expect(saved.mock.calls.at(-1)?.[0].contextBudget).toBe(96000);
+  expect(JSON.stringify(saved.mock.calls)).not.toContain('UNSAVED_TEST_KEY');expect(fake.generate).not.toHaveBeenCalled();
+});
+
+test('Data actions, about, local release history and searchable original license notices are reachable',async()=>{
+  const user=userEvent.setup(),backup=vi.fn(),restore=vi.fn();
+  render(<Settings value={migrateConnections(defaultSettings)} onChange={()=>{}} onClose={()=>{}} onNotice={()=>{}} onBackup={backup} onImport={restore}/>);
+  await user.click(screen.getByRole('button',{name:'Data & privacy'}));
+  await user.click(screen.getByRole('button',{name:'Back up workspace'}));await user.click(screen.getByRole('button',{name:'Import backup'}));
+  expect(backup).toHaveBeenCalledTimes(1);expect(restore).toHaveBeenCalledTimes(1);
+  await user.click(screen.getByRole('button',{name:'About'}));await user.click(screen.getByRole('button',{name:'View changelog'}));
+  expect(screen.getByRole('heading',{name:'Capsule sidebar & clearer settings'})).toBeDefined();
+  await user.click(screen.getByRole('button',{name:'Open-source licenses'}));
+  await user.type(await screen.findByRole('textbox',{name:'Search licenses'}),'lucide-react');
+  const list=document.querySelector('.license-list')!;
+  expect(list.querySelectorAll('details')).toHaveLength(1);expect(list.textContent).toContain('ISC');expect(list.textContent).toContain('Permission');
+  expect(within(screen.getByRole('navigation',{name:'Settings navigation'})).getByRole('button',{name:'Open-source licenses'}).getAttribute('aria-current')).toBe('page');
+  expect(fake.generate).not.toHaveBeenCalled();expect(fake.models).not.toHaveBeenCalled();expect(fake.usage).not.toHaveBeenCalled();
+});
+
+test('Settings traps keyboard focus, Escape closes, and unmount restores the trigger',async()=>{
+  const user=userEvent.setup(),close=vi.fn();const trigger=document.createElement('button');document.body.append(trigger);trigger.focus();
+  const view=render(<Settings value={migrateConnections(defaultSettings)} onChange={()=>{}} onClose={close} onNotice={()=>{}}/>);
+  expect(document.activeElement).toBe(screen.getByRole('button',{name:'Close settings'}));
+  await user.tab({shift:true});expect(document.activeElement).toBe(screen.getByRole('button',{name:'Done'}));
+  await user.tab();expect(document.activeElement).toBe(screen.getByRole('button',{name:'Close settings'}));
+  await user.keyboard('{Escape}');expect(close).toHaveBeenCalledTimes(1);view.unmount();expect(document.activeElement).toBe(trigger);trigger.remove();
+});
 test('A stalled browser sign-in can be cancelled and retried without replacing connection metadata',async()=>{
   const user=userEvent.setup(),value=migrateConnections({...defaultSettings,provider:'chatgpt'}),original=structuredClone(value),saved=vi.fn();
   let rejectAttempt:(reason:string)=>void=()=>{};

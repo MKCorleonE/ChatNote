@@ -8,6 +8,22 @@ vi.mock('./bridge',()=>({desktop:true,loadWorkspace:async()=>structuredClone(sto
 import App from './App';
 vi.mock('@tauri-apps/api/window',()=>({getCurrentWindow:()=>({onCloseRequested:async()=>()=>{},destroy:async()=>{}})}));
 beforeEach(()=>{const w=emptyWorkspace(),s=exampleSession();w.sessions=[s];w.activeId=s.id;w.settings.model='test-model';w.settings.profiles!.find(p=>p.id===w.settings.activeProfileId)!.model='test-model';store.initial=w;store.saved=null;store.requests=[];store.slow=false;window.getSelection()?.removeAllRanges();});
+
+test('The capsule exposes exactly three controls and a closing history can reopen without losing drafts',async()=>{
+  const user=userEvent.setup(),original=structuredClone(store.initial!.sessions);
+  render(<App/>);await screen.findByText('Three representations, three roles');
+  expect(document.querySelectorAll('.rail-capsule button')).toHaveLength(3);
+  await user.click(screen.getByRole('button',{name:'Open conversations'}));expect(document.activeElement).toBe(screen.getByRole('textbox',{name:'Search conversations'}));
+  await user.keyboard('{Escape}');
+  expect(document.querySelector('.history-drawer')?.classList.contains('leaving')).toBe(true);
+  await user.click(screen.getByRole('button',{name:'Open conversations'}));
+  await new Promise(r=>setTimeout(r,180));expect(document.querySelector('.history-drawer')?.classList.contains('leaving')).toBe(false);
+  await user.click(screen.getByRole('button',{name:'Open settings'}));await screen.findByRole('dialog',{name:'Settings'});
+  await waitFor(()=>expect(document.querySelector('.history-drawer')).toBeNull());
+  await user.keyboard('{Escape}');await waitFor(()=>expect(screen.queryByRole('dialog',{name:'Settings'})).toBeNull());
+  expect(document.activeElement).toBe(screen.getByRole('button',{name:'Open settings'}));
+  expect(store.requests).toHaveLength(0);expect(store.initial!.sessions).toEqual(original);
+});
 async function selectPhrase(phrase:string){const span=[...document.querySelectorAll<HTMLElement>('[data-source-start]')].find(n=>n.childNodes.length===1&&n.firstChild?.nodeType===Node.TEXT_NODE&&n.textContent?.includes(phrase));expect(span).toBeDefined();const text=span!.firstChild!,start=text.textContent!.indexOf(phrase);const range=document.createRange();range.setStart(text,start);range.setEnd(text,start+phrase.length);window.getSelection()!.removeAllRanges();window.getSelection()!.addRange(range);fireEvent.mouseUp(span!);await screen.findByRole('button',{name:'Ask in annotation'});fireEvent.click(screen.getByRole('button',{name:'Ask in annotation'}));}
 test('Private notes save without a model request and remain excluded from later annotation requests',async()=>{
   const user=userEvent.setup();render(<App/>);await screen.findByText('Three representations, three roles');
@@ -48,7 +64,7 @@ test('Live language switching preserves active conversations, drafts and connect
   await user.click(screen.getByRole('button',{name:'Open settings'}));
   await user.clear(screen.getByLabelText('Connection name'));await user.type(screen.getByLabelText('Connection name'),'UNSAVED custom name');
   await user.type(screen.getByLabelText('API key'),'UNSAVED_SECRET');
-  await user.selectOptions(screen.getByLabelText('Interface language'),'zh-Hans');
+  await user.click(screen.getByRole('button',{name:'Appearance'}));await user.selectOptions(screen.getByLabelText('Interface language'),'zh-Hans');
   await screen.findByRole('dialog',{name:'设置'});expect(document.documentElement.lang).toBe('zh-Hans');
   expect((screen.getByLabelText('API 密钥')as HTMLInputElement).value).toBe('UNSAVED_SECRET');
   await user.selectOptions(screen.getByLabelText('界面语言'),'zh-Hant');
@@ -60,11 +76,11 @@ test('Live language switching preserves active conversations, drafts and connect
   expect(saved.sessions[0].messages).toEqual(original.sessions[0].messages);expect(saved.sessions[0].branches).toEqual(original.sessions[0].branches);
   expect(JSON.stringify(saved)).not.toContain('UNSAVED_SECRET');expect(store.requests).toHaveLength(0);
   view.unmount();store.initial=saved;render(<App/>);await screen.findByRole('textbox',{name:'主線訊息'});
-  await user.click(screen.getByRole('button',{name:'開啟設定'}));await user.selectOptions(screen.getByLabelText('介面語言'),'en');
+  await user.click(screen.getByRole('button',{name:'開啟設定'}));await user.click(screen.getByRole('button',{name:'外觀'}));await user.selectOptions(screen.getByLabelText('介面語言'),'en');
   await screen.findByRole('dialog',{name:'Settings'});expect(document.documentElement.lang).toBe('en');
 });
 test('Markdown keeps source mapping, selected follow-ups and child annotations stay off the main thread',async()=>{const user=userEvent.setup();render(<App/>);await screen.findByText('Three representations, three roles');expect(document.querySelector('.katex')).not.toBeNull();const original=document.querySelectorAll('.main-scroll .message').length;await selectPhrase('Q describes');await user.type(screen.getByRole('textbox',{name:'Message this annotation'}),'Why this role?');await user.click(screen.getByRole('button',{name:'Send annotation message'}));await screen.findByText(/We keep context separate/);expect(document.querySelectorAll('.main-scroll .message')).toHaveLength(original);await selectPhrase('context separate');await user.type(screen.getByRole('textbox',{name:'Message this annotation'}),'Explain the separation');await user.click(screen.getByRole('button',{name:'Send annotation message'}));await screen.findByRole('button',{name:'Back to parent annotation'});await waitFor(()=>expect(store.saved?.sessions[0].branches).toHaveLength(3));expect(store.requests).toHaveLength(2);expect(JSON.stringify(store.requests[1].input)).toContain('Why this role?');expect(document.querySelectorAll('.main-scroll .message')).toHaveLength(original);});
-test('Conversation history opens on demand and closes after selection; drafts persist',async()=>{const other=emptyWorkspace().sessions[0];other.title='Other topic';store.initial!.sessions.push(other);const user=userEvent.setup();render(<App/>);await screen.findByText('Three representations, three roles');expect(screen.queryByRole('region',{name:'Conversations'})).toBeNull();await user.type(screen.getByRole('textbox',{name:'Message the main conversation'}),'UNSENT_DRAFT');await user.click(screen.getByRole('button',{name:'Open conversations'}));await user.click(screen.getByRole('button',{name:/Other topic/}));expect(screen.queryByLabelText('Conversations')).toBeNull();await user.click(screen.getByRole('button',{name:'Open conversations'}));await user.click(screen.getByRole('button',{name:/Understanding Transformers.*annotation/}));expect((screen.getByRole('textbox',{name:'Message the main conversation'}) as HTMLTextAreaElement).value).toBe('UNSENT_DRAFT');});
+test('Conversation history opens on demand and closes after selection; drafts persist',async()=>{const other=emptyWorkspace().sessions[0];other.title='Other topic';store.initial!.sessions.push(other);const user=userEvent.setup();render(<App/>);await screen.findByText('Three representations, three roles');expect(screen.queryByRole('region',{name:'Conversations'})).toBeNull();await user.type(screen.getByRole('textbox',{name:'Message the main conversation'}),'UNSENT_DRAFT');await user.click(screen.getByRole('button',{name:'Open conversations'}));await user.click(screen.getByRole('button',{name:/Other topic/}));await waitFor(()=>expect(screen.queryByLabelText('Conversations')).toBeNull());await user.click(screen.getByRole('button',{name:'Open conversations'}));await user.click(screen.getByRole('button',{name:/Understanding Transformers.*annotation/}));expect((screen.getByRole('textbox',{name:'Message the main conversation'}) as HTMLTextAreaElement).value).toBe('UNSENT_DRAFT');});
 test('Aborting generation preserves the pending question and marks the partial answer stopped',async()=>{store.slow=true;const user=userEvent.setup();render(<App/>);await screen.findByText('Three representations, three roles');await user.type(screen.getByRole('textbox',{name:'Message the main conversation'}),'Continue the lesson');await user.click(screen.getByRole('button',{name:'Send main message'}));await screen.findAllByRole('button',{name:'Stop generation'});await user.click(screen.getAllByRole('button',{name:'Stop generation'})[0]);await screen.findByText('Stopped · partial answer saved');await waitFor(()=>{const m=store.saved?.sessions[0].messages.at(-1);expect(m?.status).toBe('stopped');});expect(screen.getByText('Continue the lesson')).toBeDefined();});
 test('A failed load cannot silently overwrite existing records',async()=>{const bridge=await import('./bridge');const spy=vi.spyOn(bridge,'loadWorkspace').mockRejectedValueOnce(new Error('Database corrupt'));render(<App/>);await screen.findByText('Error: Database corrupt');await new Promise(r=>setTimeout(r,400));expect(store.saved).toBeNull();spy.mockRestore();});
 

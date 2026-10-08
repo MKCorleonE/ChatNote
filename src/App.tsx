@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
-import { ArrowDownToLine, ArrowLeft, ArrowUp, BookOpen, Check, ChevronDown, ChevronRight, FilePlus2, History, Layers3, Menu, MessageSquare, MoreHorizontal, Plus, Search, Settings2, Square, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowLeft, ArrowUp, BookOpen, Check, ChevronDown, ChevronRight, FilePlus2, Layers3, Menu, MessageSquare, MoreHorizontal, Plus, Search, Settings as SettingsIcon, Square, X } from 'lucide-react';
 import * as bridge from './bridge';
 import { ancestry, contextFor, emptyWorkspace, exampleSession, exportMarkdown, makeAnchor, message, newSession, recoverWorkspace, snapshot, uid, validAnchor, validateWorkspace } from './core';
 import type { Anchor, Branch, ContextReport, Message, Session, View, Workspace } from './types';
 import { RichText } from './RichText';
 import Settings from './Settings';
+import { usePresence } from './usePresence';
 import { selectedSource } from './source';
 import { AnswerStatus } from './AnswerStatus';
 import { resolveLanguage, translator } from './i18n';
@@ -63,6 +64,15 @@ export default function App() {
     [settings, setSettings] = useState(false),
     [more, setMore] = useState(false),
     [search, setSearch] = useState('');
+  const historyPresence = usePresence(history);
+  const settingsPresence = usePresence(settings);
+  useEffect(() => {
+    if (!history) return;
+    document.querySelector<HTMLInputElement>('#conversation-history input')?.focus();
+    return () => {
+      if (document.activeElement?.closest('#conversation-history')) document.querySelector<HTMLButtonElement>('.rail-button[aria-controls="conversation-history"]')?.focus();
+    };
+  }, [history]);
   const [selection, setSelection] = useState<SelectionDraft | null>(null),
     [draft, setDraft] = useState<SelectionDraft | null>(null),
     [notice, setNotice] = useState(''),
@@ -656,15 +666,7 @@ export default function App() {
   } as CSSProperties} onMouseUp={selectText} onKeyUp={e => {
     if (e.shiftKey) selectText();
   }} onTouchEnd={() => setTimeout(selectText, 60)}>
-    <nav className="rail" aria-label={t("Navigation")}><button className="brand-symbol" title="ChatNote" onClick={() => {
-        if (current.messages.length) mainRef.current?.scrollTo({
-          top: 0,
-          behavior: 'smooth'
-        });
-      }}>◈</button><button className={`rail-button ${history ? 'active' : ''}`} onClick={() => {
-        setHistory(x => !x);
-        setMore(false);
-      }} title={t("Conversations")} aria-label={t("Open conversations")}><History size={19} /></button><button className="rail-button" onClick={() => addSession()} title={t("New conversation")} aria-label={t("New conversation")}><Plus size={20} /></button><div className="rail-spacer" /><button className="rail-button" onClick={() => setSettings(true)} title={t("Settings")} aria-label={t("Open settings")}><Settings2 size={19} /></button><span className="rail-foot">CN</span></nav>
+    <nav className="rail" aria-label={t('Navigation')}><div className="rail-capsule"><button className="rail-button rail-new" onClick={() => addSession()} title={t('New conversation')} aria-label={t('New conversation')}><Plus size={20}/></button><button className={`rail-button ${history ? 'active' : ''}`} aria-expanded={history} aria-controls="conversation-history" onClick={() => { setHistory(x => !x); setSettings(false); setMore(false); }} title={t('Conversations')} aria-label={t('Open conversations')}><Menu size={19}/></button><button className={`rail-button rail-settings ${settings ? 'active' : ''}`} aria-expanded={settings} onClick={() => { setSettings(x => !x); setHistory(false); setMore(false); }} title={t('Settings')} aria-label={t('Open settings')}><SettingsIcon size={19}/></button></div></nav>
     <div className="workspace"><header className="topbar"><div className="title-group"><span className="wordmark">ChatNote</span><span className="title-divider" /><button className="session-title" title={t("Rename conversation")} onClick={() => {
             const title = window.prompt(t('Conversation name'), current.title);
             if (title?.trim()) updateSession(current.id, s => ({
@@ -718,12 +720,12 @@ export default function App() {
                   });
                 }}>{t("Bring a conclusion to the main thread")}<ArrowUp size={13} /></button>}</>}{draft && <div className="annotation-empty"><span className="small-label">{t("STAY WITH THE DETAIL")}</span><p>{t("Your question lives beside this passage. The main conversation keeps its flow.")}</p><div className="suggestions">{['Why is it designed this way?', 'Can you give me an example?'].map(q => <button key={q} onClick={() => setDraftText('new', t(q))}>{t(q)}</button>)}</div></div>}</>}</div>{mode === 'branch' && (draft || branch) && <div className="panel-compose">{composer('branch')}<span className="small muted">{t("Separate context. Same learning journey.")}</span></div>}</aside>}
     </div></div>
-    {history && <><div className="drawer-scrim" onClick={() => setHistory(false)} /><section className="history-drawer" aria-label={t("Conversations")}><header><h2>{t("Your conversations")}</h2><button className="icon-button" onClick={() => setHistory(false)} aria-label={t("Close conversations")}><X size={17} /></button></header><button className="new-session" onClick={() => addSession()}><Plus size={16} />{t("New conversation")}</button><div className="history-search"><Search size={15} /><input aria-label={t("Search conversations")} placeholder={t("Find a conversation\u2026")} value={search} onChange={e => setSearch(e.target.value)} /></div><div className="session-list">{w.sessions.filter(s => s.title.toLowerCase().includes(search.toLowerCase())).map(s => <button key={s.id} className={s.id === current.id ? 'active' : ''} onClick={() => switchSession(s.id)}><MessageSquare size={15} /><span>{s.title}<small>{plural('annotationCount',s.branches.length)} · {date(s.updatedAt)}</small></span></button>)}</div><footer><span className="status-dot" />{t("Saved on this device")}</footer></section></>}
+    {historyPresence.rendered && <><div className={`drawer-scrim ${historyPresence.leaving ? 'leaving' : ''}`} onClick={() => setHistory(false)} /><section inert={historyPresence.leaving} id="conversation-history" className={`history-drawer ${historyPresence.leaving ? 'leaving' : ''}`} onKeyDown={e => { if (e.key === 'Escape') setHistory(false); }} aria-label={t("Conversations")}><header><h2>{t("Your conversations")}</h2><button className="icon-button" onClick={() => setHistory(false)} aria-label={t("Close conversations")}><X size={17} /></button></header><button className="new-session" onClick={() => addSession()}><Plus size={16} />{t("New conversation")}</button><div className="history-search"><Search size={15} /><input aria-label={t("Search conversations")} placeholder={t("Find a conversation\u2026")} value={search} onChange={e => setSearch(e.target.value)} /></div><div className="session-list">{w.sessions.filter(s => s.title.toLowerCase().includes(search.toLowerCase())).map(s => <button key={s.id} className={s.id === current.id ? 'active' : ''} onClick={() => switchSession(s.id)}><MessageSquare size={15} /><span>{s.title}<small>{plural('annotationCount',s.branches.length)} · {date(s.updatedAt)}</small></span></button>)}</div><footer><span className="status-dot" />{t("Saved on this device")}</footer></section></>}
     {selection && <div className="selection-toolbar" style={{
       left: selection.x,
       top: selection.y
     }} onMouseDown={e => e.preventDefault()}><span>{selection.anchor.quote.slice(0, 25)}</span><button onClick={createAnnotation}><Plus size={14} />{t("Ask in annotation")}</button></div>}
-    {settings && <Settings value={w.settings} onLanguageChange={async chosen=>{remember();if(!wRef.current)return;const next={...wRef.current,settings:{...wRef.current.settings,language:chosen}};setW(next);setSelection(null);setNotice('');await bridge.saveWorkspace(next);}} onChange={async s => {
+    {settingsPresence.rendered && <Settings closing={settingsPresence.leaving} onBackup={() => void backup()} onImport={() => importRef.current?.click()} dataBusy={!!job} value={w.settings} onLanguageChange={async chosen=>{remember();if(!wRef.current)return;const next={...wRef.current,settings:{...wRef.current.settings,language:chosen}};setW(next);setSelection(null);setNotice('');await bridge.saveWorkspace(next);}} onChange={async s => {
       if (!wRef.current) return;
       const next = {
         ...wRef.current,
