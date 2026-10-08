@@ -247,7 +247,7 @@
   "Close the old authorization tab and start sign-in again. If the browser page also times out, check its connection to ChatGPT. Your saved registration is kept.": "请关闭旧授权页后重新登录。如果浏览器页面也超时，请检查该浏览器与 ChatGPT 的连接。已有注册信息会保留。",
   "Could not reach the sign-in service": "无法连接登录服务",
   "Check your network and try again later. This check uses no model quota and does not change your saved connection.": "请检查网络或稍后重试。此检查不使用模型额度，也不改动已有连接。",
-  "Annotate formula": "批注此公式",
+  "Annotate formula": "批注该公式",
   "Annotate code": "批注此代码",
   "Code": "代码",
   "Copy code": "复制代码",
@@ -276,5 +276,6 @@
   "elapsedSeconds": "{count} 秒",
   "Jump to latest answer": "回到最新回答",
   "BEFORE SENDING": "发送前预览",
-  "Invalid draft source.": "未发送批注的原文来源无效。"
+  "Invalid draft source.": "未发送批注的原文来源无效。",
+  "Formula": "公式"
 }

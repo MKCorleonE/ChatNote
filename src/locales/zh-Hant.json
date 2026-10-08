@@ -276,5 +276,6 @@
   "elapsedSeconds": "{count} 秒",
   "Jump to latest answer": "回到最新回覆",
   "BEFORE SENDING": "傳送前預覽",
-  "Invalid draft source.": "未傳送批註的原文來源無效。"
+  "Invalid draft source.": "未傳送批註的原文來源無效。",
+  "Formula": "公式"
 }

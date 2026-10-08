@@ -276,5 +276,6 @@
   "elapsedSeconds": "{count} s",
   "Jump to latest answer": "Jump to latest answer",
   "BEFORE SENDING": "BEFORE SENDING",
-  "Invalid draft source.": "Invalid draft source."
+  "Invalid draft source.": "Invalid draft source.",
+  "Formula": "Formula"
 }

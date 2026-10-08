@@ -223,7 +223,7 @@ export default function Settings({
             ...c,
             contextBudget: Number(e.target.value)
           }))}>{[16000, 48000, 96000, 192000].map(count => <option key={count} value={count}>{t('characterCount',{count:n(count)})}</option>)}</select><span className="small muted">{t("A local character budget, not an exact token limit. Older content may be abbreviated; originals remain saved.")}</span></label>
-    </div><footer><span className="small muted">ChatNote · 0.3.0</span><button className="primary" disabled={busy || config.profiles!.some(p => !p.name.trim())} onClick={() => action(async () => {
+    </div><footer><span className="small muted">ChatNote · 0.3.1</span><button className="primary" disabled={busy || config.profiles!.some(p => !p.name.trim())} onClick={() => action(async () => {
           await saveKey();
           await onChange(syncActive(config));
           onClose();
