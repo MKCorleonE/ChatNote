@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ChatNote · Desktop interaction demo</title>
+  <link rel="stylesheet" href="app.css">
+  <script defer src="core.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="navigation">
+      <div class="brand"><span class="brand-symbol">◈</span> ChatNote</div>
+      <div class="workspace-label">LEARNING SPACE</div>
+      <button class="session active" type="button" id="session-button"><span>◌</span><span>Understanding Transformers<small>Conversation + annotations</small></span></button>
+      <div class="navigation-note">Every question,<br>back to its source.</div>
+      <button type="button" id="sidebar-tree" class="nav-action">Follow-up tree <span id="side-count"></span></button>
+      <div class="navigation-footer"><span class="status-dot"></span> Stored in this browser</div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar">
+        <div class="breadcrumb">Learning / <strong>Transformer</strong></div>
+        <div class="top-actions">
+          <span class="demo-badge">Independent demo · example responses</span>
+          <button class="quiet-button" type="button" id="export-button">Export notes</button>
+          <button class="quiet-button" type="button" id="reset-button">Reset demo</button>
+          <button class="quiet-button" type="button" id="tree-button" aria-pressed="false">Follow-up tree <span id="tree-count"></span></button>
+        </div>
+      </header>
+      <div class="content-layout">
+        <main class="main-chat">
+          <div class="lesson-header"><div class="eyebrow">KEEP YOUR LEARNING FLOW</div><h1>Understanding attention through Q, K, V</h1><p>Select a term or passage in an answer to open a follow-up attached to it.</p></div>
+          <div class="transcript" id="transcript"></div>
+          <div class="main-composer-wrap">
+            <div class="main-hint"><span class="status-dot"></span> Continue the lesson. Keep follow-ups beside their source. <span id="save-status" role="status">Saved locally</span></div>
+            <form id="main-form" class="composer main-composer">
+              <label class="sr-only" for="main-input">Continue the main conversation</label>
+              <textarea id="main-input" rows="2" placeholder="Continue the lesson, e.g. explain multi-head attention next" maxlength="2000"></textarea>
+              <div class="composer-bottom"><span>Main conversation</span><button type="submit" class="send-button" aria-label="Send main question">↑</button></div>
+            </form>
+            <p class="demo-note">Predefined responses · no model connected. Conversation and annotations are stored locally in this browser.</p>
+          </div>
+        </main>
+        <aside class="annotation-panel" id="annotation-panel" aria-label="Annotation">
+          <header class="panel-header"><div><span class="eyebrow" id="panel-eyebrow">PASSAGE FOLLOW-UP</span><h2 id="panel-title">Annotation</h2></div><button class="icon-button" id="close-panel" type="button" aria-label="Close annotation panel">×</button></header>
+          <div id="panel-body"></div>
+          <form id="branch-form" class="composer branch-composer" hidden>
+            <label class="sr-only" for="branch-input">Ask a follow-up in this annotation</label>
+            <textarea id="branch-input" rows="3" placeholder="Continue this annotation…" maxlength="2000"></textarea>
+            <div class="composer-bottom"><span>Only in this annotation</span><button type="submit" class="send-button" aria-label="Send annotation question">↑</button></div>
+          </form>
+        </aside>
+      </div>
+    </div>
+  </div>
+  <div id="selection-toolbar" class="selection-toolbar" hidden><span id="selected-preview"></span><button id="ask-selection" type="button">＋ Ask in annotation</button></div>
+  <div id="hover-preview" class="hover-preview" role="tooltip" hidden></div>
+  <div class="toast" id="toast" role="status" hidden></div>
+</body>
+</html>

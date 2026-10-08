@@ -1,0 +1,7 @@
+{
+  "name": "chatnote-desktop-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Desktop interaction prototype with persistent text-anchored follow-ups",
+  "scripts": { "start": "node serve.js", "test": "node --test core.test.js", "build:demo": "node build-demo.js" }
+}

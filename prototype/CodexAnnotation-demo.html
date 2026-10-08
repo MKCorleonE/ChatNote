@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CodexAnnotation · Desktop interaction demo</title>
+<style>
+:root{color-scheme:dark;--bg:#191b1e;--surface:#212429;--ink:#e6e9ed;--muted:#a4aab4;--line:#353a42;--green:#a3dbc0;--soft-green:#283b33;--yellow:#4c4326;--warm:#2b2924;--shadow:0 12px 34px #00000055;font-family:"Segoe UI","Microsoft YaHei UI","Microsoft YaHei",sans-serif;font-size:14px}
+*{box-sizing:border-box}body{margin:0;color:var(--ink);background:var(--bg)}button,textarea{font:inherit}button{cursor:pointer}button:focus-visible,textarea:focus-visible,[role=button]:focus-visible{outline:2px solid var(--green);outline-offset:3px}button:disabled{opacity:.5;cursor:default}[hidden]{display:none!important}.sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.app-shell{min-height:100vh;display:grid;grid-template-columns:220px minmax(0,1fr)}.navigation{display:flex;flex-direction:column;padding:28px 16px 20px;background:#141619;border-right:1px solid var(--line);position:sticky;top:0;height:100vh}.brand{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;letter-spacing:-.3px;padding:0 9px}.brand-symbol{font-size:25px}.workspace-label{margin:38px 10px 12px;color:var(--muted);font-size:11px;letter-spacing:1.5px}.session{display:flex;gap:12px;align-items:flex-start;text-align:left;border:1px solid #393e46;border-radius:9px;padding:13px 12px;background:#202328;width:100%;color:var(--ink)}.session>span:first-child{font-size:22px;line-height:1}.session small{display:block;font-size:11px;color:var(--muted);margin-top:8px}.navigation-note{font-size:13px;line-height:1.9;color:#a0a7b1;padding:25px 12px}.nav-action{margin-top:auto;display:flex;justify-content:space-between;background:none;border:0;padding:14px 10px;color:var(--ink);text-align:left}.navigation-footer{font-size:11px;padding:14px 10px 0;color:var(--muted);border-top:1px solid #353a42;display:flex;align-items:center;gap:8px}.status-dot{width:6px;height:6px;border-radius:50%;background:#9ac6a8;display:inline-block;flex-shrink:0}.workspace{min-width:0}.topbar{min-height:69px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 28px;border-bottom:1px solid var(--line);background:var(--surface)}.breadcrumb{font-size:12px;color:var(--muted)}.breadcrumb strong{font-weight:500;color:var(--ink)}.top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.demo-badge{font-size:11px;color:var(--muted);padding:5px 10px;background:#2b2f35;border-radius:20px}.quiet-button{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:7px 11px;font-size:12px;color:var(--ink)}.quiet-button:hover{background:var(--soft-green)}.quiet-button[aria-pressed=true]{color:var(--green);border-color:#668b77;background:var(--soft-green)}.quiet-button span,.nav-action span{font-size:11px;background:#353a42;border-radius:4px;margin-left:4px;padding:1px 5px}.content-layout{display:grid;grid-template-columns:minmax(360px,1fr) 350px;align-items:start}.content-layout.panel-closed{grid-template-columns:1fr}.main-chat{min-width:0;padding:38px 38px 24px;max-width:920px;width:100%;margin:auto}.lesson-header{max-width:680px;margin:0 auto 30px}.eyebrow{font-size:10px;letter-spacing:1.8px;color:var(--green)}h1{font-size:25px;letter-spacing:-.8px;font-weight:500;margin:12px 0}h2{font-size:17px;font-weight:500;margin:6px 0 0}.lesson-header p{font-size:12px;color:var(--muted);line-height:1.8}.transcript{max-width:680px;margin:auto}.message{margin-bottom:29px;scroll-margin-top:25px}.message-label{display:flex;align-items:center;gap:9px;font-size:11px;color:var(--muted);margin-bottom:12px}.assistant-symbol{font-size:18px;color:var(--ink)}.message-label .sample-tag{margin-left:auto;font-size:10px;color:#a4aab4}.user-message{max-width:90%;margin-left:auto;background:#30343b;border-radius:12px 12px 3px 12px;padding:13px 17px;font-size:13px;line-height:1.9;white-space:pre-wrap}.message h3{font-size:16px;font-weight:600;margin:16px 0 12px}.message-block{font-size:14px;line-height:2;white-space:pre-wrap;overflow-wrap:anywhere;margin:10px 0}.main-chat .message-block{color:#d5d9df}.anchor-mark{background:var(--yellow);padding:2px 0;border-bottom:1px solid #9d8442;border-radius:3px;cursor:pointer;box-decoration-break:clone;-webkit-box-decoration-break:clone}.anchor-mark:hover,.anchor-mark:focus-visible{background:#64552c}.anchor-mark.active-anchor{background:#69562a;border-bottom-color:#b89948}.annotation-count{display:inline-block;background:#6f5c30;border-radius:4px;padding:1px 5px;font-size:10px;margin-left:6px;line-height:1.5;vertical-align:middle;color:#fff1bd;user-select:none}.annotation-caption{font-size:11px;color:var(--muted);margin-top:11px;display:flex;align-items:center;gap:7px}.main-composer-wrap{max-width:680px;margin:32px auto 0}.main-hint{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);margin-bottom:11px}.main-hint #save-status{margin-left:auto;white-space:nowrap}.composer{border:1px solid #41464f;border-radius:12px;background:var(--surface);padding:11px 13px}.composer:focus-within{border-color:#759b83;box-shadow:0 0 0 3px #91b6a11a}.composer textarea{width:100%;resize:vertical;border:0;background:transparent;outline:none;padding:3px;min-height:45px;color:var(--ink);line-height:1.8;font-size:13px}.composer textarea::placeholder{color:#a0a7b1}.composer-bottom{display:flex;justify-content:space-between;align-items:center;padding:5px 2px 0}.composer-bottom span{font-size:10px;color:var(--muted)}.send-button{border:0;border-radius:8px;background:#a3dbc0;color:#f2f3f5;width:31px;height:31px;font-size:21px;line-height:1}.send-button:hover{background:#bce8d2}.demo-note{font-size:10px;color:#a4aab4;line-height:1.7;margin:11px 0 0}.annotation-panel{border-left:1px solid var(--line);background:#202328;min-height:calc(100vh - 69px);padding:24px 21px;min-width:0}.panel-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:24px}.icon-button{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border:0;background:#30343b;color:var(--muted);border-radius:6px;font-size:21px}.source-card{padding:13px 15px;background:#302d24;border-left:3px solid #b59b57;border-radius:0 7px 7px 0;margin-bottom:17px}.source-card small{display:block;font-size:10px;color:var(--muted);margin-bottom:8px}.source-card p{font-size:12px;line-height:1.9;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.source-link{font-size:11px;color:var(--green);background:none;border:0;padding:8px 0 0}.thread-info{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--muted);margin-bottom:18px;flex-wrap:wrap}.thread-info button{border:0;background:transparent;color:var(--green);font-size:10px;padding:0}.branch-message{margin-bottom:19px}.branch-message .message-label{margin-bottom:6px}.branch-question{border-radius:8px;background:#2e3834;padding:10px 12px;font-size:12px;line-height:1.9;white-space:pre-wrap;overflow-wrap:anywhere}.branch-answer .message-block{font-size:12px;line-height:1.95}.branch-answer .message-label{margin:13px 0 7px}.branch-composer{margin-top:22px}.suggestion-list{display:grid;gap:9px;margin:20px 0}.suggestion-list button{font-size:12px;line-height:1.7;text-align:left;border:1px solid #3f4841;background:var(--surface);padding:10px 12px;border-radius:7px;color:var(--ink)}.suggestion-list button:hover{border-color:#759b83;background:var(--soft-green)}.panel-description{font-size:12px;line-height:1.9;color:var(--muted)}.branch-tools{display:flex;justify-content:flex-end;margin-top:8px}.branch-tools button{border:0;background:none;padding:3px 0;color:var(--green);font-size:11px}.tree-heading{font-size:13px;margin:18px 0 12px;font-weight:500}.tree-list{list-style:none;padding:0;margin:0}.tree-list .tree-list{margin:8px 0 12px 13px;padding-left:13px;border-left:1px solid #454d46}.tree-node{position:relative;margin:9px 0}.tree-node button{width:100%;display:block;text-align:left;border:1px solid #3f454e;background:var(--surface);padding:11px 12px;border-radius:8px;color:var(--ink)}.tree-node button:hover{border-color:#759b83;background:var(--soft-green)}.tree-node button small{display:block;font-size:10px;color:var(--muted);margin-bottom:6px;overflow-wrap:anywhere}.tree-node button span{font-size:12px;line-height:1.7;display:block;overflow-wrap:anywhere}.tree-root{font-size:13px;color:var(--green);margin:0 0 18px}.selection-toolbar{position:fixed;z-index:40;display:flex;align-items:center;gap:8px;max-width:calc(100vw - 20px);padding:6px 7px 6px 12px;border:1px solid #41464f;border-radius:9px;background:var(--surface);box-shadow:var(--shadow)}.selection-toolbar span{color:var(--muted);font-size:11px;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.selection-toolbar button{padding:7px 10px;background:#a3dbc0;color:#f2f3f5;border:0;border-radius:6px;font-size:12px;white-space:nowrap}.hover-preview{position:fixed;z-index:45;max-width:min(300px,calc(100vw - 24px));background:var(--surface);box-shadow:var(--shadow);border:1px solid #41464f;padding:14px;border-radius:9px;font-size:12px;line-height:1.8;overflow-wrap:anywhere}.hover-preview small{color:var(--green);font-size:10px}.hover-preview strong{display:block;font-weight:500;margin:7px 0}.hover-preview p{margin:5px 0;color:var(--muted)}.hover-preview button{border:0;color:var(--green);background:none;font-size:11px;padding:6px 0 0}.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:100;max-width:calc(100vw - 30px);padding:12px 18px;background:#354d40;color:#f2f3f5;border-radius:8px;box-shadow:var(--shadow);font-size:12px;line-height:1.7}.empty-state{color:var(--muted);font-size:12px;line-height:2;padding:12px 0}.main-label{font-size:10px;color:var(--muted);padding-top:9px}.flash-source{animation:source-flash 1.5s ease-out}@keyframes source-flash{0%{background:#64552c}100%{background:transparent}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}.flash-source{animation:none}}
+.tree-node-row{display:flex;gap:6px;align-items:stretch}.tree-node-row .tree-open{flex:1;min-width:0}.tree-node-row .tree-toggle{flex:0 0 28px;width:28px;padding:0;text-align:center;color:var(--green)}
+.export-dialog{width:min(680px,calc(100vw - 32px));border:1px solid var(--line);padding:25px;border-radius:12px;background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}.export-dialog::backdrop{background:#00000099}.note-preview{width:100%;height:330px;resize:vertical;border:1px solid var(--line);padding:14px;border-radius:8px;background:#191b1e;color:var(--ink);font-size:12px;line-height:1.8}.export-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-top:15px}.download-note{color:#f2f3f5;background:#a3dbc0;border-radius:7px;padding:8px 12px;text-decoration:none;font-size:12px}
+@media(min-width:1500px){.annotation-panel{padding:27px}.content-layout{grid-template-columns:minmax(360px,1fr) 390px}}@media(max-width:1120px){.app-shell{grid-template-columns:180px minmax(0,1fr)}.navigation{padding-left:10px;padding-right:10px}.brand{font-size:13px}.main-chat{padding:30px 23px 24px}.content-layout{grid-template-columns:minmax(310px,1fr) 315px}.annotation-panel{padding:23px 16px}.topbar{padding:13px 22px}.demo-badge{display:none}}@media(max-width:900px){.app-shell{grid-template-columns:1fr}.navigation{display:none}.content-layout{grid-template-columns:minmax(300px,1fr) 315px}.main-chat{padding:28px 23px}h1{font-size:23px}}@media(max-width:650px){.topbar{padding:13px 16px;align-items:flex-start}.top-actions{gap:6px}.quiet-button{padding:6px 8px;font-size:11px}.content-layout{grid-template-columns:1fr}.main-chat{padding:25px 19px}.annotation-panel{border-left:0;border-top:1px solid var(--line);min-height:0;padding:24px 19px}.lesson-header{margin-bottom:25px}.main-hint{font-size:10px;flex-wrap:wrap}.composer textarea{font-size:16px}.selection-toolbar span{max-width:100px}}
+
+/* Dark demo: readable foregrounds and English label spacing. */
+.send-button,.selection-toolbar button,.download-note{color:#14241c}.main-hint{flex-wrap:wrap;line-height:1.7}.navigation-note{line-height:1.7}.session small{line-height:1.6}.lesson-header h1{line-height:1.3}.source-card small{letter-spacing:.7px}.composer-bottom{gap:8px}.top-actions{justify-content:flex-end}::selection{background:#627faf;color:#fff}
+
+</style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="navigation">
+      <div class="brand"><span class="brand-symbol">◈</span> CodexAnnotation</div>
+      <div class="workspace-label">LEARNING SPACE</div>
+      <button class="session active" type="button" id="session-button"><span>◌</span><span>Understanding Transformers<small>Conversation + annotations</small></span></button>
+      <div class="navigation-note">Every question,<br>back to its source.</div>
+      <button type="button" id="sidebar-tree" class="nav-action">Follow-up tree <span id="side-count"></span></button>
+      <div class="navigation-footer"><span class="status-dot"></span> Stored in this browser</div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar">
+        <div class="breadcrumb">Learning / <strong>Transformer</strong></div>
+        <div class="top-actions">
+          <span class="demo-badge">Independent demo · example responses</span>
+          <button class="quiet-button" type="button" id="export-button">Export notes</button>
+          <button class="quiet-button" type="button" id="reset-button">Reset demo</button>
+          <button class="quiet-button" type="button" id="tree-button" aria-pressed="false">Follow-up tree <span id="tree-count"></span></button>
+        </div>
+      </header>
+      <div class="content-layout">
+        <main class="main-chat">
+          <div class="lesson-header"><div class="eyebrow">KEEP YOUR LEARNING FLOW</div><h1>Understanding attention through Q, K, V</h1><p>Select a term or passage in an answer to open a follow-up attached to it.</p></div>
+          <div class="transcript" id="transcript"></div>
+          <div class="main-composer-wrap">
+            <div class="main-hint"><span class="status-dot"></span> Continue the lesson. Keep follow-ups beside their source. <span id="save-status" role="status">Saved locally</span></div>
+            <form id="main-form" class="composer main-composer">
+              <label class="sr-only" for="main-input">Continue the main conversation</label>
+              <textarea id="main-input" rows="2" placeholder="Continue the lesson, e.g. explain multi-head attention next" maxlength="2000"></textarea>
+              <div class="composer-bottom"><span>Main conversation</span><button type="submit" class="send-button" aria-label="Send main question">↑</button></div>
+            </form>
+            <p class="demo-note">Predefined responses · no model connected. Conversation and annotations are stored locally in this browser.</p>
+          </div>
+        </main>
+        <aside class="annotation-panel" id="annotation-panel" aria-label="Annotation">
+          <header class="panel-header"><div><span class="eyebrow" id="panel-eyebrow">PASSAGE FOLLOW-UP</span><h2 id="panel-title">Annotation</h2></div><button class="icon-button" id="close-panel" type="button" aria-label="Close annotation panel">×</button></header>
+          <div id="panel-body"></div>
+          <form id="branch-form" class="composer branch-composer" hidden>
+            <label class="sr-only" for="branch-input">Ask a follow-up in this annotation</label>
+            <textarea id="branch-input" rows="3" placeholder="Continue this annotation…" maxlength="2000"></textarea>
+            <div class="composer-bottom"><span>Only in this annotation</span><button type="submit" class="send-button" aria-label="Send annotation question">↑</button></div>
+          </form>
+        </aside>
+      </div>
+    </div>
+  </div>
+  <div id="selection-toolbar" class="selection-toolbar" hidden><span id="selected-preview"></span><button id="ask-selection" type="button">＋ Ask in annotation</button></div>
+  <div id="hover-preview" class="hover-preview" role="tooltip" hidden></div>
+  <div class="toast" id="toast" role="status" hidden></div>
+<script>
+(function (root) {
+  'use strict';
+  function segments(text, annotations) {
+    const ranges = annotations.filter(a => Number.isInteger(a.start) && Number.isInteger(a.end) && a.start >= 0 && a.end <= text.length && a.end > a.start);
+    const points = [...new Set([0, text.length, ...ranges.flatMap(a => [a.start, a.end])])].sort((a,b) => a-b);
+    return points.slice(0,-1).map((start,i) => ({start, end:points[i+1], text:text.slice(start,points[i+1]), ids:ranges.filter(a => a.start <= start && a.end >= points[i+1]).map(a=>a.id)}));
+  }
+  function sourceText(state, anchor) {
+    if (anchor.kind === 'main') return state.messages.flatMap(m=>m.blocks||[]).find(b=>b.id===anchor.blockId)?.text;
+    return state.branches.flatMap(b=>b.messages).find(m=>m.id===anchor.blockId && m.role==='assistant')?.text;
+  }
+  function anchorValid(state, anchor) {
+    const text = sourceText(state,anchor);
+    return typeof text==='string' && Number.isInteger(anchor.start) && Number.isInteger(anchor.end) && anchor.start >= 0 && anchor.end > anchor.start && anchor.end <= text.length && text.slice(anchor.start,anchor.end)===anchor.quote;
+  }
+  function ancestry(branches,id) {
+    const path=[],seen=new Set();let current=branches.find(b=>b.id===id);
+    while(current) {if(seen.has(current.id)) throw new Error('循环父子关系');seen.add(current.id);path.unshift(current.id);current=branches.find(b=>b.id===current.parentId);}
+    return path;
+  }
+  function validState(state) {
+    if (!state || state.version!==1 || !Array.isArray(state.messages) || !Array.isArray(state.branches) || state.messages.length>1000 || state.branches.length>1000) return false;
+    const ids = new Set();
+    for(const message of state.messages) {
+      if(!message || !['user','assistant'].includes(message.role) || typeof message.id!=='string') return false;
+      if(message.role==='assistant' && (!Array.isArray(message.blocks)||message.blocks.some(b=>!b||typeof b.id!=='string'||typeof b.text!=='string'))) return false;
+      if(message.role==='user' && typeof message.text!=='string') return false;
+      if(ids.has(message.id)) return false;ids.add(message.id);
+    }
+    const branchIds=new Set();
+    for(const branch of state.branches) {
+      if(!branch || typeof branch.id!=='string' || branchIds.has(branch.id)||!branch.anchor || !['main','branch'].includes(branch.anchor.kind)||!Array.isArray(branch.messages)||branch.messages.some(m=>!m||typeof m.id!=='string'||typeof m.text!=='string'||!['user','assistant'].includes(m.role))) return false;
+      branchIds.add(branch.id);
+    }
+    for(const branch of state.branches) {
+      if(branch.anchor.kind==='main' && branch.parentId!==null) return false;
+      if(branch.anchor.kind==='branch') {
+        const parent=state.branches.find(b=>b.id===branch.parentId);
+        if(!parent || !parent.messages.some(m=>m.id===branch.anchor.blockId && m.role==='assistant')) return false;
+      }
+      if(!anchorValid(state,branch.anchor)) return false;
+      try {ancestry(state.branches,branch.id);}catch{return false;}
+    }
+    return true;
+  }
+  const api={segments,sourceText,anchorValid,ancestry,validState};
+  if(typeof module==='object' && module.exports) module.exports=api;
+  else root.AnnotationCore=api;
+})(typeof globalThis==='object'?globalThis:this);
+
+</script>
+<script>
+(() => {
+  'use strict';
+  const C=window.AnnotationCore, key='codex-annotation-desktop-en-v2';
+  const $=id=>document.getElementById(id);
+  const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
+  const uid=prefix=>prefix+'-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
+  const sampleQ='Each token’s input vector is multiplied by three separate learned projection matrices to produce Query (Q), Key (K), and Value (V). Q describes what a position is looking for, K provides features to match against, and V carries the information to aggregate.';
+  const sampleScale='Attention computes the dot products of Q with each K, divides by √dₖ, and applies softmax to obtain weights. Here, dₖ is the key dimension. A weighted sum of V then produces a new representation for the current position.';
+  const qAnswer='Q and K serve different roles: one expresses “what I need” and the other “what I can match.” Separate projections let the model learn these representations independently. In a simple setting without masks or additional constraints, sharing the projection makes the raw dot-product scores symmetric. Matching relationships do not have to be symmetric.';
+  function anchored(kind,blockId,text,quote){const start=text.indexOf(quote);return {kind,blockId,start,end:start+quote.length,quote};}
+  function seed(){return {version:1,messages:[
+    {id:'u-intro',role:'user',text:'Help me understand Transformers step by step. Start with Q, K, and V.'},
+    {id:'m-qkv',role:'assistant',title:'01 / Three representations, three roles',blocks:[{id:'p-qkv',text:sampleQ},{id:'p-role',text:'Think of Q as a search request, K as an index label, and V as the information behind that label. This analogy helps distinguish their roles; all three are actually vectors learned by the model.'}]},
+    {id:'m-scale',role:'assistant',title:'02 / From match scores to attention weights',blocks:[{id:'p-scale',text:sampleScale},{id:'p-next',text:'The main sequence is: generate Q/K/V → compute match scores → scale and normalize → aggregate V. Next, we can explore multi-head attention.'}]}
+  ],branches:[
+    {id:'b-projection',parentId:null,anchor:anchored('main','p-qkv',sampleQ,'separate learned projection matrices'),messages:[{id:'bq-1',role:'user',text:'Why do Q and K use different projection matrices?'},{id:'ba-1',role:'assistant',text:qAnswer}]},
+    {id:'b-scaling',parentId:null,anchor:anchored('main','p-scale',sampleScale,'divides by √dₖ'),messages:[{id:'bq-2',role:'user',text:'Why divide by the square root of the dimension?'},{id:'ba-2',role:'assistant',text:'Under a simplifying assumption that Q and K components are independent, have zero mean, and unit variance, the sum of dₖ products has variance about dₖ. Dividing by √dₖ keeps the score scale more stable and reduces overly peaked softmax outputs and small gradients. Real training distributions need not satisfy these assumptions exactly.'}]},
+    {id:'b-asymmetric',parentId:'b-projection',anchor:anchored('branch','ba-1',qAnswer,'Matching relationships do not have to be symmetric'),messages:[{id:'bq-3',role:'user',text:'What does “not symmetric” mean here?'},{id:'ba-3',role:'assistant',text:'The score from position A to B need not equal the score from B to A. A verb may need information from its subject, while the subject may not need to attend to the verb equally. This refers to scores before softmax; row-normalized weights can differ even when the scores are symmetric.'}]}
+  ],ui:{mode:'thread',activeId:'b-projection'}};}
+  let state=seed(),storageAvailable=true,loadNotice='';
+  try{const raw=localStorage.getItem(key);if(raw){const parsed=JSON.parse(raw);if(C.validState(parsed))state=parsed;else loadNotice='Loaded the demo examples; saved data could not be read.';}}catch{storageAvailable=false;loadNotice='Local storage is unavailable. You can still interact and export your notes.';}
+  let activeId=state.branches.some(b=>b.id===state.ui?.activeId)?state.ui.activeId:'b-projection';
+  if(!state.branches.some(b=>b.id===activeId))activeId=state.branches[0]?.id||null;
+  let mode=['thread','tree','closed'].includes(state.ui?.mode)?state.ui.mode:'thread';
+  let draft=null,selected=null,hoverTimer,toastTimer;
+  function toast(text){$('toast').textContent=text;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,3500);}
+  function save(){state.ui={mode,activeId};try{localStorage.setItem(key,JSON.stringify(state));storageAvailable=true;$('save-status').textContent='Saved locally';}catch{storageAvailable=false;$('save-status').textContent='Not saved · export available';toast('Saving is unavailable. Use Export notes to keep this session.');}}
+  function branchTitle(branch){return branch.messages.find(m=>m.role==='user')?.text||'New annotation';}
+  function forBlock(kind,id){return state.branches.filter(b=>b.anchor.kind===kind && b.anchor.blockId===id).map(b=>({...b.anchor,id:b.id}));}
+  function block(text,kind,id){
+    const n=el('p','message-block');n.dataset.anchorBlock=id;n.dataset.anchorKind=kind;
+    for(const segment of C.segments(text,forBlock(kind,id))){
+      if(!segment.ids.length)n.append(document.createTextNode(segment.text));
+      else{const mark=el('span','anchor-mark'+(segment.ids.includes(activeId)&&mode==='thread'?' active-anchor':''),segment.text);mark.dataset.branches=segment.ids.join(',');mark.setAttribute('role','button');mark.tabIndex=0;mark.setAttribute('aria-label','Open annotation: '+segment.text);n.append(mark);}
+    }return n;
+  }
+  function renderTranscript(){
+    const transcript=$('transcript');transcript.replaceChildren();
+    for(const message of state.messages){
+      const card=el('article','message '+(message.role==='user'?'user':'assistant'));card.dataset.messageId=message.id;
+      if(message.role==='user')card.append(el('div','user-message',message.text));
+      else{
+        const label=el('div','message-label');label.append(el('span','assistant-symbol','◈'),el('span','','Learning assistant'),el('span','sample-tag','Example response'));card.append(label);
+        if(message.title)card.append(el('h3','',message.title));
+        message.blocks.forEach(p=>card.append(block(p.text,'main',p.id)));
+        const count=state.branches.filter(b=>b.anchor.kind==='main'&&message.blocks.some(p=>p.id===b.anchor.blockId)).length;
+        if(count){const caption=el('div','annotation-caption');caption.append(el('span','','◌'),el('span','',count+(count===1?' annotation':' annotations')+' · hover to preview, click to open'));card.append(caption);}
+      }transcript.append(card);
+    }
+  }
+  function sourceCard(anchor,parentId){const n=el('div','source-card');n.append(el('small','',anchor.kind==='main'?'SOURCE · MAIN CONVERSATION':'SOURCE · PARENT ANNOTATION'),el('p','',anchor.quote));const button=el('button','source-link','↗ Jump to source');button.type='button';button.addEventListener('click',()=>goSource(anchor,parentId));n.append(button);return n;}
+  function suggestion(question){const button=el('button','',question);button.type='button';button.addEventListener('click',()=>{$('branch-input').value=question;$('branch-input').focus();});return button;}
+  function renderPanel(){
+    const panel=$('annotation-panel'),body=$('panel-body');panel.hidden=mode==='closed';document.querySelector('.content-layout').classList.toggle('panel-closed',mode==='closed');
+    $('tree-button').setAttribute('aria-pressed',String(mode==='tree'));$('tree-count').textContent=state.branches.length;$('side-count').textContent=state.branches.length;
+    body.replaceChildren();$('branch-form').hidden=true;
+    if(mode==='closed')return;
+    if(mode==='tree'){renderTree(body);return;}
+    $('panel-eyebrow').textContent=draft?'SELECTED PASSAGE':'PASSAGE FOLLOW-UP';$('panel-title').textContent=draft?'New annotation':'Annotation';
+    const branch=state.branches.find(b=>b.id===activeId);
+    if(draft){
+      body.append(sourceCard(draft.anchor,draft.parentId));body.append(el('p','panel-description','This follow-up stays attached to the selected passage. The main conversation keeps its reading order.'));
+      const list=el('div','suggestion-list');
+      const quote=draft.anchor.quote;
+      const questions=/√|dimension|scal|softmax/i.test(quote)?['Why scale the scores this way?','Can you give a numerical example?']:['Why is it designed this way?','Can you explain with an example?'];
+      questions.forEach(q=>list.append(suggestion(q)));body.append(list);$('branch-input').placeholder='Ask about this passage…';$('branch-form').hidden=false;return;
+    }
+    if(!branch){body.append(el('p','empty-state','Select text in an assistant response to create an annotation.'));return;}
+    body.append(sourceCard(branch.anchor,branch.parentId));
+    const info=el('div','thread-info'),turns=branch.messages.filter(m=>m.role==='user').length;info.append(el('span','',C.ancestry(state.branches,branch.id).length>1?'Level '+C.ancestry(state.branches,branch.id).length+' annotation':'Main conversation annotation'),el('span','',turns+(turns===1?' follow-up turn':' follow-up turns')));
+    if(branch.parentId){const up=el('button','','← Parent annotation');up.type='button';up.addEventListener('click',()=>showBranch(branch.parentId));info.append(up);}body.append(info);
+    for(const message of branch.messages){
+      const n=el('div','branch-message '+(message.role==='assistant'?'branch-answer':''));
+      if(message.role==='user')n.append(el('div','branch-question',message.text));
+      else{const label=el('div','message-label');label.append(el('span','assistant-symbol','◈'),el('span','','Example response'));n.append(label,block(message.text,'branch',message.id));
+        const children=state.branches.filter(b=>b.parentId===branch.id&&b.anchor.blockId===message.id);
+        children.forEach(child=>{const childButton=el('button','source-link','↳ Child annotation: '+branchTitle(child));childButton.type='button';childButton.addEventListener('click',()=>showBranch(child.id));n.append(childButton);});}
+      body.append(n);
+    }
+    const tools=el('div','branch-tools'),promote=el('button','','Bring this answer into the main conversation');promote.type='button';promote.addEventListener('click',()=>promoteBranch(branch));tools.append(promote);body.append(tools);
+    $('branch-input').placeholder='Continue this annotation…';$('branch-form').hidden=false;
+  }
+  function renderTree(body){
+    $('panel-eyebrow').textContent='REVIEW & NAVIGATE';$('panel-title').textContent='Follow-up tree';body.append(el('p','panel-description','Explore follow-ups by source passage. Click a question to reopen it.'));
+    const root=el('div','tree-root','◈ Understanding Transformers');body.append(root);
+    for(const message of state.messages.filter(m=>m.role==='assistant')){
+      const roots=state.branches.filter(b=>b.parentId===null&&message.blocks.some(p=>p.id===b.anchor.blockId));if(!roots.length)continue;
+      body.append(el('div','tree-heading',message.title||'Main response'));
+      const list=el('ul','tree-list');roots.forEach(b=>list.append(treeNode(b,new Set())));body.append(list);
+    }
+    if(!state.branches.length)body.append(el('p','empty-state','No annotations yet. Select a passage to get started.'));
+    body.append(el('p','demo-note','The tree shows recorded follow-up relationships. Every annotation links back to its source.'));
+  }
+  function treeNode(branch,seen){
+    const li=el('li','tree-node');if(seen.has(branch.id))return li;seen.add(branch.id);
+    const row=el('div','tree-node-row'),button=el('button','tree-open');button.type='button';button.append(el('small','',branch.anchor.quote),el('span','',branchTitle(branch)));button.addEventListener('click',()=>showBranch(branch.id));row.append(button);li.append(row);
+    const children=state.branches.filter(b=>b.parentId===branch.id);if(children.length){const list=el('ul','tree-list');children.forEach(b=>list.append(treeNode(b,new Set(seen))));li.append(list);const toggle=el('button','tree-toggle','−');toggle.type='button';toggle.setAttribute('aria-label','Expand or collapse children: '+branchTitle(branch));toggle.setAttribute('aria-expanded','true');toggle.addEventListener('click',()=>{list.hidden=!list.hidden;toggle.textContent=list.hidden?'+':'−';toggle.setAttribute('aria-expanded',String(!list.hidden));});row.append(toggle);}return li;
+  }
+  function renderAll(){renderTranscript();renderPanel();if(!storageAvailable)$('save-status').textContent='Not saved · export available';}
+  function hideTransient(){selected=null;$('selection-toolbar').hidden=true;$('hover-preview').hidden=true;clearTimeout(hoverTimer);}
+  function showBranch(id){hideTransient();draft=null;activeId=id;mode='thread';$('branch-input').value='';renderAll();save();if(window.innerWidth<650)$('annotation-panel').scrollIntoView({behavior:'smooth',block:'start'});}
+  function flashSource(anchor){const n=[...document.querySelectorAll('[data-anchor-block]')].find(n=>n.dataset.anchorBlock===anchor.blockId&&n.dataset.anchorKind===anchor.kind);if(n){n.scrollIntoView({behavior:'smooth',block:'center'});n.classList.remove('flash-source');void n.offsetWidth;n.classList.add('flash-source');}}
+  function goSource(anchor,parentId){if(anchor.kind==='branch')showBranch(parentId);flashSource(anchor);}
+  function captureSelection(){
+    const selection=window.getSelection();if(!selection||selection.isCollapsed||!selection.rangeCount){$('selection-toolbar').hidden=true;selected=null;return;}
+    const range=selection.getRangeAt(0),container=node=>node.nodeType===Node.ELEMENT_NODE?node:node.parentElement;
+    const first=container(range.startContainer)?.closest('[data-anchor-block]'),last=container(range.endContainer)?.closest('[data-anchor-block]');
+    if(!first||first!==last){hideTransient();if(first||last)toast('Select text within one paragraph to create an annotation.');return;}
+    const prefix=range.cloneRange();prefix.selectNodeContents(first);prefix.setEnd(range.startContainer,range.startOffset);
+    const start=prefix.toString().length,quote=range.toString();if(!quote.trim())return;if(quote.length>600){hideTransient();toast('Select a passage of up to 600 characters.');return;}
+    const kind=first.dataset.anchorKind,blockId=first.dataset.anchorBlock;
+    const anchor={kind,blockId,start,end:start+quote.length,quote};if(!C.anchorValid(state,anchor)){hideTransient();toast('The selection could not be located. Please select it again.');return;}
+    const parentId=kind==='branch'?state.branches.find(b=>b.messages.some(m=>m.id===blockId))?.id:null;
+    if(kind==='branch'&&!parentId)return;
+    selected={anchor,parentId};$('hover-preview').hidden=true;$('selected-preview').textContent=quote;
+    const rect=range.getBoundingClientRect(),bar=$('selection-toolbar');bar.hidden=false;
+    bar.style.left=Math.max(10,Math.min(rect.left,window.innerWidth-bar.offsetWidth-10))+'px';
+    bar.style.top=Math.max(10,Math.min(rect.bottom+8,window.innerHeight-bar.offsetHeight-10))+'px';
+  }
+  function askSelection(){if(!selected)return;draft=selected;activeId=null;mode='thread';$('branch-input').value='';window.getSelection()?.removeAllRanges();hideTransient();renderAll();$('branch-input').focus();if(window.innerWidth<650)$('annotation-panel').scrollIntoView({behavior:'smooth',block:'start'});}
+  function answer(question,quote){
+    if(/symmetr|shar|different|projection/i.test(question+' '+quote))return qAnswer;
+    if(/√|dimension|scal|softmax/i.test(question+' '+quote))return seed().branches[1].messages[1].text;
+    if(/\b[QKV]\b|vector|represent|search/i.test(quote))return 'Think in terms of roles: Q supplies the search request, K supplies matching clues, and V supplies the information to aggregate. Each position compares its Q with other positions’ K vectors, normalizes the scores, and uses those weights to sum V. “Search” is an analogy for the computation.';
+    return 'Your question is attached to the selected passage. This prototype demonstrates where annotation answers live and how they are saved. Responses are predefined examples, so arbitrary questions do not receive generated explanations. Continue the follow-up, annotate this answer, or return to the main conversation.';
+  }
+  function sendBranch(event){event.preventDefault();const input=$('branch-input'),question=input.value.trim();if(!question)return;
+    let branch=state.branches.find(b=>b.id===activeId);
+    if(draft){if(!C.anchorValid(state,draft.anchor)){toast('The source has changed. Please select it again.');return;}branch=state.branches.find(b=>b.anchor.kind===draft.anchor.kind&&b.anchor.blockId===draft.anchor.blockId&&b.anchor.start===draft.anchor.start&&b.anchor.end===draft.anchor.end);
+      if(!branch){branch={id:uid('branch'),parentId:draft.parentId,anchor:draft.anchor,messages:[]};state.branches.push(branch);}activeId=branch.id;draft=null;}
+    if(!branch)return;branch.messages.push({id:uid('question'),role:'user',text:question},{id:uid('answer'),role:'assistant',text:answer(question,branch.anchor.quote)});input.value='';hideTransient();renderAll();save();toast('Saved to the annotation. Main conversation order is preserved.');
+  }
+  function sendMain(event){event.preventDefault();const input=$('main-input'),question=input.value.trim();if(!question)return;const id=uid('main');state.messages.push({id:uid('user'),role:'user',text:question});
+    const text=/multi[ -]?head/i.test(question)?'Multi-head attention computes attention with several sets of projections. Each head has its own Q/K/V representations and attention weights. The outputs are concatenated and passed through an output projection. This lets the model learn different relationships, but does not guarantee that each head corresponds to a fixed human concept.':'This is a new main conversation message. You can annotate this answer too. The demo uses predefined content; generating answers to arbitrary questions would require a model connection.';
+    state.messages.push({id,role:'assistant',title:/multi[ -]?head/i.test(question)?'03 / Learning multiple relationships':'Continue the main conversation',blocks:[{id:uid('paragraph'),text}]});input.value='';renderAll();save();document.querySelector('[data-message-id="'+id+'"]').scrollIntoView({behavior:'smooth',block:'center'});}
+  function promoteBranch(branch){const answer=branch.messages.filter(m=>m.role==='assistant').at(-1);if(!answer)return;const id=uid('promoted');state.messages.push({id,role:'assistant',title:'Answer brought back from an annotation',blocks:[{id:uid('summary'),text:'Source: '+branch.anchor.quote+'\n\n'+answer.text}]});renderAll();save();toast('Added this example answer to the main conversation.');}
+  function exportNotes(){
+    const lines=['# Understanding Transformers: conversation and annotations','','> Independent CodexAnnotation interaction demo. Assistant responses are predefined examples.',''];
+    function appendBranch(branch,depth,seen){if(seen.has(branch.id))return;seen.add(branch.id);lines.push('#'.repeat(Math.min(depth+2,6))+' Annotation: '+branchTitle(branch),'','> Source: '+branch.anchor.quote,'');branch.messages.forEach(m=>lines.push('**'+(m.role==='user'?'Question':'Example response')+'**',m.text,''));state.branches.filter(b=>b.parentId===branch.id).forEach(b=>appendBranch(b,depth+1,seen));}
+    state.messages.forEach(m=>{lines.push('## '+(m.role==='user'?'My main conversation question':m.title||'Main response'),'');if(m.role==='user')lines.push(m.text,'');else{m.blocks.forEach(b=>lines.push(b.text,''));state.branches.filter(b=>b.parentId===null&&m.blocks.some(p=>p.id===b.anchor.blockId)).forEach(b=>appendBranch(b,1,new Set()));}});
+    const note=lines.join('\n'),url=URL.createObjectURL(new Blob(['\uFEFF'+note],{type:'text/markdown;charset=utf-8'}));
+    const dialog=el('dialog','export-dialog');dialog.setAttribute('aria-labelledby','export-title');const heading=el('h2','','Export learning notes');heading.id='export-title';dialog.append(heading,el('p','panel-description','Includes the main conversation, source quotes, and nested follow-ups. Download the file, or select all and copy.'));
+    const area=el('textarea','note-preview');area.readOnly=true;area.value=note;area.setAttribute('aria-label','Learning notes');dialog.append(area);
+    const actions=el('div','export-actions'),select=el('button','quiet-button','Select all'),download=el('a','download-note','Download Markdown'),close=el('button','quiet-button','Close');select.type='button';select.addEventListener('click',()=>{area.focus();area.select();});download.href=url;download.download='Transformer-learning-notes.md';close.type='button';close.addEventListener('click',()=>dialog.close());actions.append(select,download,close);dialog.append(actions);document.body.append(dialog);dialog.addEventListener('close',()=>{URL.revokeObjectURL(url);dialog.remove();});dialog.showModal();
+  }
+  function resetDemo(){
+    const dialog=el('dialog','export-dialog');dialog.setAttribute('aria-labelledby','reset-title');
+    const heading=el('h2','','Reset demo?');heading.id='reset-title';
+    dialog.append(heading,el('p','panel-description','This replaces this demo’s saved conversation, annotations, and unsent input with the original examples. Export notes first if you want to keep your work.'));
+    const actions=el('div','export-actions'),cancel=el('button','quiet-button','Cancel'),reset=el('button','quiet-button','Restore original examples');
+    cancel.type=reset.type='button';cancel.addEventListener('click',()=>dialog.close());
+    reset.addEventListener('click',()=>{state=seed();activeId=state.ui.activeId;mode=state.ui.mode;draft=null;hideTransient();$('main-input').value='';$('branch-input').value='';renderAll();save();dialog.close();document.querySelector('.lesson-header').scrollIntoView({behavior:'smooth'});if(storageAvailable)toast('Original examples restored and saved.');});
+    actions.append(cancel,reset);dialog.append(actions);document.body.append(dialog);dialog.addEventListener('close',()=>{dialog.remove();$('reset-button').focus();});dialog.showModal();cancel.focus();
+  }
+  function hover(mark){if(window.getSelection()?.toString())return;clearTimeout(hoverTimer);const ids=mark.dataset.branches.split(','),branch=state.branches.find(b=>b.id===ids[0]);if(!branch)return;const popup=$('hover-preview');popup.replaceChildren();popup.append(el('small','',ids.length>1?ids.length+' annotations':'Passage annotation'),el('strong','',branchTitle(branch)));const text=branch.messages.find(m=>m.role==='assistant')?.text||'';popup.append(el('p','',text.slice(0,110)+(text.length>110?'…':'')));const open=el('button','','Open full follow-up →');open.type='button';open.addEventListener('click',()=>showBranch(branch.id));popup.append(open);popup.hidden=false;const r=mark.getBoundingClientRect();popup.style.left=Math.max(12,Math.min(r.left,window.innerWidth-popup.offsetWidth-12))+'px';popup.style.top=Math.max(12,Math.min(r.bottom+9,window.innerHeight-popup.offsetHeight-12))+'px';}
+  document.addEventListener('pointerup',event=>{if(event.target.closest('#selection-toolbar,#hover-preview'))return;setTimeout(captureSelection,0);});
+  document.addEventListener('keyup',event=>{if(event.key==='Shift')captureSelection();if(event.key==='Escape'){window.getSelection()?.removeAllRanges();hideTransient();}});
+  document.addEventListener('click',event=>{const mark=event.target.closest('.anchor-mark');if(mark&&!window.getSelection()?.toString())showBranch(mark.dataset.branches.split(',')[0]);});
+  document.addEventListener('keydown',event=>{const mark=event.target.closest('.anchor-mark');if(mark&&['Enter',' '].includes(event.key)){event.preventDefault();showBranch(mark.dataset.branches.split(',')[0]);}});
+  document.addEventListener('pointerover',event=>{const mark=event.target.closest('.anchor-mark');if(mark)hover(mark);});
+  document.addEventListener('pointerout',event=>{if(event.target.closest('.anchor-mark'))hoverTimer=setTimeout(()=>$('hover-preview').hidden=true,220);});
+  document.addEventListener('focusin',event=>{const mark=event.target.closest('.anchor-mark');if(mark)hover(mark);});
+  document.addEventListener('focusout',event=>{if(event.target.closest('.anchor-mark')&&!event.relatedTarget?.closest('#hover-preview'))$('hover-preview').hidden=true;});
+  $('hover-preview').addEventListener('pointerenter',()=>clearTimeout(hoverTimer));$('hover-preview').addEventListener('pointerleave',()=>$('hover-preview').hidden=true);
+  window.addEventListener('scroll',()=>hideTransient(),{passive:true});window.addEventListener('resize',()=>hideTransient());
+  $('ask-selection').addEventListener('pointerdown',e=>e.preventDefault());$('ask-selection').addEventListener('click',askSelection);
+  $('branch-form').addEventListener('submit',sendBranch);$('main-form').addEventListener('submit',sendMain);
+  function showTree(){hideTransient();draft=null;mode='tree';renderAll();save();if(window.innerWidth<650)$('annotation-panel').scrollIntoView({behavior:'smooth',block:'start'});}
+  $('tree-button').addEventListener('click',showTree);$('sidebar-tree').addEventListener('click',showTree);
+  $('close-panel').addEventListener('click',()=>{hideTransient();draft=null;mode='closed';renderAll();save();});
+  $('session-button').addEventListener('click',()=>{document.querySelector('.lesson-header').scrollIntoView({behavior:'smooth'});});
+  $('export-button').addEventListener('click',exportNotes);
+  $('reset-button').addEventListener('click',resetDemo);
+  for(const id of ['main-input','branch-input'])$(id).addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();$(id).form.requestSubmit();}});
+  renderAll();if(loadNotice)toast(loadNotice);
+})();
+
+</script>
+</body>
+</html>
