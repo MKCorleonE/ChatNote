@@ -22,14 +22,14 @@ v0.3.0 扩大代码/公式/格式选区，补齐常见公式写法，新增私�
 
 Windows v0.5.0 内测版：加号新建、三横线历史、齿轮设置置于同一胶囊，加入轻按压与面板开合动效。设置按模型与连接、阅读与上下文、外观、数据与隐私分区，并提供关于、更新日志和可搜索的开源许可。现有对话、批注锚点、笔记、草稿、连接及凭据存储保留；本版安装升级与手感仍待用户验收。
 
-- [v0.5.0 Windows 安装包](releases/ChatNote_0.5.0_x64-setup.exe)
-- [v0.5.0 可直接启动的程序](releases/ChatNote_0.5.0.exe)
+- [v0.5.0 Windows 安装包](https://github.com/MKCorleonE/ChatNote/releases/download/v0.5.0/ChatNote_0.5.0_x64-setup.exe)
+- [v0.5.0 可直接启动的程序](https://github.com/MKCorleonE/ChatNote/releases/download/v0.5.0/ChatNote_0.5.0.exe)
 - [v0.5.0 使用与验证](docs/V0.5.0_VALIDATION.md)
 - [版本保留规则](docs/RELEASE_POLICY.md)
 - [国际化维护说明](docs/INTERNATIONALIZATION.md)
 - [v0.1.0 基线验证](docs/BUILD_AND_VALIDATION.md)
 
-当前使用本地交付文件；[升级 PR #1](https://github.com/MKCorleonE/ChatNote/pull/1) 已推送，合入 main 和私有 Release 等待明确审批及云端检查。
+[升级 PR #1](https://github.com/MKCorleonE/ChatNote/pull/1) 经[云端检查](https://github.com/MKCorleonE/ChatNote/actions/runs/37794216118)通过后已合入 main，私有 v0.5.0 Release 与三项附件已发布并校验。本地文件位于 releases。
 
 升级时先关闭旧版，再启动新版或安装，不必先断开账号。常用 releases 目录保留 v0.5.0 和 v0.4.0，v0.3.1 及更早版本归档保留。私有下载需要有仓库权限的 GitHub 账号。
 

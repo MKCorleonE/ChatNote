@@ -16,6 +16,6 @@
 
 48 项前端与 16 项常规原生检查通过，编译/格式检查通过；助手浏览器实际检查导航、许可搜索、焦点与 390 像素窄窗口无溢出。未发送真实推理请求；用户尚未验收本版手感与安装升级。
 
-[升级 PR #1](https://github.com/MKCorleonE/ChatNote/pull/1)（合并与私有 Release 等待审批/云端检查） · [验证记录](../docs/V0.5.0_VALIDATION.md) · [版本与 idea 清单](../docs/CHANGELOG_AND_IDEAS.md) · [保留规则](../docs/RELEASE_POLICY.md)。
+[私有 v0.5.0 Release](https://github.com/MKCorleonE/ChatNote/releases/tag/v0.5.0)（三项附件已逐个校验） · [验证记录](../docs/V0.5.0_VALIDATION.md) · [版本与 idea 清单](../docs/CHANGELOG_AND_IDEAS.md) · [保留规则](../docs/RELEASE_POLICY.md)。
 
 当前是未签名 Windows 内测版，没有自动更新或云同步，其他平台尚未交付。回退前先备份工作区，旧程序对未来数据格式的兼容性需另行确认。
