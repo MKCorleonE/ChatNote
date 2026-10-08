@@ -71,6 +71,8 @@ export default function App() {
       if (live) {
         if (data) data.settings = migrateConnections(data.settings);
         setW(data ?? emptyWorkspace());
+        const selected=data?.sessions.find(s=>s.id===data.activeId);const source=selected?.view.draftSource;
+        if(selected&&source&&selected.view.mode==='branch'&&selected.view.branchId===null&&validAnchor(selected,source.anchor))setDraft({...source,x:0,y:0});
         setSaved(data ? 'Saved on this device' : 'Ready to save locally');
       }
     }).catch(e => {
@@ -262,8 +264,8 @@ export default function App() {
       y: Math.max(12, Math.min(window.innerHeight - 52, box.top - 45))
     });
   }
-  const selectBlock=useCallback((m:Message,start:number,end:number)=>{const current=wRef.current?.sessions.find(s=>s.id===wRef.current!.activeId);if(!current)return;const anchor=makeAnchor(m,start,end);if(!validAnchor(current,anchor))return;const parent=current.branches.find(b=>b.messages.some(x=>x.id===m.id));const hit=current.branches.find(b=>b.anchor.messageId===anchor.messageId&&b.anchor.revision===anchor.revision&&b.anchor.start===start&&b.anchor.end===end);if(hit){openBranch(hit.id);return;}remember();setDraft({anchor,parentId:parent?.id??null,x:0,y:0});setSelection(null);viewPatch(current.id,{mode:'branch',branchId:null});},[remember,openBranch,viewPatch]);
-  function saveDraftNote(){if(!current||!draft)return;const note=current.view.drafts[noteDraftKey(draft!.anchor)]?.trim();if(!note||!validAnchor(current,draft.anchor))return;const b:Branch={id:uid(),parentId:draft.parentId,anchor:draft.anchor,messages:[],createdAt:Date.now(),sourceContext:snapshot(current,draft.parentId,draft.anchor),note};updateSession(current.id,s=>({...s,branches:[...s.branches,b],view:{...s.view,mode:'branch',branchId:b.id,drafts:{...s.view.drafts,[b.id]:s.view.drafts.new??'',new:'',[noteDraftKey(draft.anchor)]:''}}}));setDraft(null);}
+  const selectBlock=useCallback((m:Message,start:number,end:number)=>{const current=wRef.current?.sessions.find(s=>s.id===wRef.current!.activeId);if(!current)return;const anchor=makeAnchor(m,start,end);if(!validAnchor(current,anchor))return;const parent=current.branches.find(b=>b.messages.some(x=>x.id===m.id));const hit=current.branches.find(b=>b.anchor.messageId===anchor.messageId&&b.anchor.revision===anchor.revision&&b.anchor.start===start&&b.anchor.end===end);if(hit){openBranch(hit.id);return;}remember();setDraft({anchor,parentId:parent?.id??null,x:0,y:0});setSelection(null);viewPatch(current.id,{mode:'branch',branchId:null,draftSource:{anchor,parentId:parent?.id??null}});},[remember,openBranch,viewPatch]);
+  function saveDraftNote(){if(!current||!draft)return;const note=current.view.drafts[noteDraftKey(draft!.anchor)]?.trim();if(!note||!validAnchor(current,draft.anchor))return;const b:Branch={id:uid(),parentId:draft.parentId,anchor:draft.anchor,messages:[],createdAt:Date.now(),sourceContext:snapshot(current,draft.parentId,draft.anchor),note};updateSession(current.id,s=>({...s,branches:[...s.branches,b],view:{...s.view,mode:'branch',branchId:b.id,draftSource:undefined,drafts:{...s.view.drafts,[b.id]:s.view.drafts.new??'',new:'',[noteDraftKey(draft.anchor)]:''}}}));setDraft(null);}
   function createAnnotation() {
     if (!selection || !current) return;
     remember();
@@ -271,6 +273,7 @@ export default function App() {
     if (existing) openBranch(existing.id);else {
       setDraft(selection);
       viewPatch(current.id, {
+        draftSource:{anchor:selection.anchor,parentId:selection.parentId},
         mode: 'branch',
         branchId: null
       });
@@ -437,7 +440,7 @@ export default function App() {
         },
         ...(b ? {
           mode: 'branch' as const,
-          branchId: b.id
+          branchId:b.id,draftSource:undefined
         } : {})
       }
     };
@@ -670,7 +673,7 @@ export default function App() {
     {mode !== 'closed' && <aside className="annotation-panel"><header className="panel-header"><div><span className="eyebrow">{mode === 'tree' ? t("REVIEW & NAVIGATE") : draft ? t("SELECTED PASSAGE") : t("PASSAGE FOLLOW-UP")}</span><h2>{mode === 'tree' ? t("Follow-up tree") : draft ? t("New annotation") : t("Annotation")}{mode !== 'tree' && branch && <span className="level">{ancestry(current, branch.id).length > 1 ? t('levelLabel', {count:n(ancestry(current, branch.id).length)}) : ''}</span>}</h2></div><button className="icon-button" aria-label={t("Close annotation panel")} onClick={() => {
               remember();
               viewPatch(current.id, {
-                mode: 'closed'
+                mode:'closed',draftSource:undefined
               });
               setDraft(null);
             }}><X size={18} /></button></header>

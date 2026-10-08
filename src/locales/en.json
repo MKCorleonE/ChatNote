@@ -275,5 +275,6 @@
   "Your saved session was kept. Check your network or retry later; disconnecting is not needed for a temporary error.": "Your saved session was kept. Check your network or retry later; disconnecting is not needed for a temporary error.",
   "elapsedSeconds": "{count} s",
   "Jump to latest answer": "Jump to latest answer",
-  "BEFORE SENDING": "BEFORE SENDING"
+  "BEFORE SENDING": "BEFORE SENDING",
+  "Invalid draft source.": "Invalid draft source."
 }

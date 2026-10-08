@@ -29,6 +29,11 @@ test('Switching an annotation restores the main reading position even immediatel
   await waitFor(()=>expect(store.saved?.sessions[0].view.positions.main.scrollTop).toBe(260));
   expect(main.scrollTop).toBe(260);
 });
+test('A saved unsent selection reopens with its original source and question after restart',async()=>{
+  const s=store.initial!.sessions[0];s.view.mode='branch';s.view.branchId=null;s.view.draftSource={anchor:structuredClone(s.branches[0].anchor),parentId:null};s.view.drafts.new='Unsent selection question';
+  render(<App/>);await screen.findByRole('heading',{name:'New annotation'});expect((screen.getByRole('textbox',{name:'Message this annotation'})as HTMLTextAreaElement).value).toBe('Unsent selection question');
+  expect(document.querySelector('.source-card blockquote')?.textContent).toBe(s.view.draftSource.anchor.quote);expect(store.requests).toHaveLength(0);
+});
 test('Abbreviated history requires review before sending and sends the exact reviewed context',async()=>{
   const w=store.initial!,s=w.sessions[0];s.messages=[message('user','Old question'),message('assistant','Old detail '.repeat(1400))];s.branches=[];s.view.mode='closed';s.view.branchId=null;w.settings.contextBudget=8000;
   const user=userEvent.setup();render(<App/>);await screen.findByText(/Old detail/);await user.type(screen.getByRole('textbox',{name:'Message the main conversation'}),'Current question');

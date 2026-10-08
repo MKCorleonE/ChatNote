@@ -3,7 +3,7 @@ import type { Language } from './i18n';
 export interface Message { id: string; revision: string; role: 'user' | 'assistant'; text: string; status: Status; createdAt: number; model?: string; connectionId?: string; connectionName?: string; error?: string; promotedFrom?: string; context?: ContextReport; phase?:'connecting'|'generating'; completedAt?:number; firstTextAt?:number }
 export interface Anchor { messageId: string; revision: string; start: number; end: number; quote: string; prefix: string; suffix: string }
 export interface Branch { id: string; parentId: string | null; anchor: Anchor; messages: Message[]; createdAt: number; sourceContext: ContextItem[]; note?:string }
-export interface View { mode: 'closed' | 'branch' | 'tree'; branchId: string | null; drafts: Record<string, string>; positions: Record<string, { messageId: string; offset: number; scrollTop: number }>; collapsed: string[] }
+export interface View { mode: 'closed' | 'branch' | 'tree'; branchId: string | null; drafts: Record<string, string>; positions: Record<string, { messageId: string; offset: number; scrollTop: number }>; collapsed: string[]; draftSource?:{anchor:Anchor;parentId:string|null} }
 export interface Session { id: string; title: string; createdAt: number; updatedAt: number; messages: Message[]; branches: Branch[]; view: View; example?: boolean }
 export type ProviderKind = 'openai' | 'chatgpt' | 'compatible';
 export type Preset = 'openai' | 'chatgpt' | 'deepseek' | 'qwen' | 'custom';

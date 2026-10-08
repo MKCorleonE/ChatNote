@@ -275,5 +275,6 @@
   "Your saved session was kept. Check your network or retry later; disconnecting is not needed for a temporary error.": "已保留工作階段，請檢查網路或稍後重試。暫時性錯誤無須登出帳號。",
   "elapsedSeconds": "{count} 秒",
   "Jump to latest answer": "回到最新回覆",
-  "BEFORE SENDING": "傳送前預覽"
+  "BEFORE SENDING": "傳送前預覽",
+  "Invalid draft source.": "未傳送批註的原文來源無效。"
 }

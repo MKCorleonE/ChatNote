@@ -275,5 +275,6 @@
   "Your saved session was kept. Check your network or retry later; disconnecting is not needed for a temporary error.": "已保留会话，请检查网络或稍后重试。临时错误无需退出账号。",
   "elapsedSeconds": "{count} 秒",
   "Jump to latest answer": "回到最新回答",
-  "BEFORE SENDING": "发送前预览"
+  "BEFORE SENDING": "发送前预览",
+  "Invalid draft source.": "未发送批注的原文来源无效。"
 }
