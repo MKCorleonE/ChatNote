@@ -113,6 +113,50 @@ pub fn write(name: &str, value: Option<&str>) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
+    #[test]
+    #[ignore = "Disposable credential subprocess used by persistence test"]
+    fn credential_process_probe() {
+        let Ok(name) = std::env::var("CHATNOTE_TEST_CREDENTIAL") else {
+            return;
+        };
+        assert!(name.starts_with("test-persistence-"));
+        uuid::Uuid::parse_str(name.strip_prefix("test-persistence-").unwrap()).unwrap();
+        let text = "synthetic-session-data".repeat(250);
+        match std::env::var("CHATNOTE_TEST_OPERATION").unwrap().as_str() {
+            "write" => write(&name, Some(&text)).unwrap(),
+            "read" => assert!(read(&name).unwrap().as_deref() == Some(text.as_str())),
+            _ => panic!("Invalid test operation"),
+        }
+    }
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
+    #[test]
+    #[ignore = "Verifies disposable credential across separate native processes"]
+    fn credential_survives_separate_processes() {
+        let name = format!("test-persistence-{}", uuid::Uuid::new_v4());
+        let executable = std::env::current_exe().unwrap();
+        let invoke = |operation: &str| {
+            std::process::Command::new(&executable)
+                .args([
+                    "--exact",
+                    "vault::tests::credential_process_probe",
+                    "--ignored",
+                ])
+                .env("CHATNOTE_TEST_CREDENTIAL", &name)
+                .env("CHATNOTE_TEST_OPERATION", operation)
+                .output()
+                .unwrap()
+                .status
+                .success()
+        };
+        let written = invoke("write");
+        let read = written && invoke("read");
+        write(&name, None).unwrap();
+        assert!(
+            written && read,
+            "The platform vault did not preserve the synthetic credential between processes"
+        );
+    }
     #[test]
     fn invalid_manifests_rejected() {
         assert!(manifest("chatnote-vault-v1:bad:999").is_none());

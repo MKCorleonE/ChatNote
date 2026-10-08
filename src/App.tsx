@@ -5,6 +5,8 @@ import { ancestry, contextFor, emptyWorkspace, exampleSession, exportMarkdown, m
 import type { Anchor, Branch, ContextReport, Message, Session, View, Workspace } from './types';
 import { RichText } from './RichText';
 import Settings from './Settings';
+import { selectedSource } from './source';
+import { AnswerStatus } from './AnswerStatus';
 import { resolveLanguage, translator } from './i18n';
 import { I18nProvider } from './I18nProvider';
 import { activateProfile, activeProfile, friendlyError, migrateConnections, usageUrl } from './connections';
@@ -21,6 +23,7 @@ type Job = {
   messageId: string;
   controller: AbortController;
 };
+const noteDraftKey=(anchor:Anchor)=>`note:${anchor.messageId}:${anchor.revision}:${anchor.start}:${anchor.end}`;
 const safeName = (s: string) => s.replace(/[<>:"/\\|?*\x00-\x1f]/g, '-').slice(0, 90) || 'ChatNote';
 export default function App() {
   const [w, setW] = useState<Workspace | null>(null),
@@ -37,12 +40,16 @@ export default function App() {
     [draft, setDraft] = useState<SelectionDraft | null>(null),
     [notice, setNotice] = useState(''),
     [context, setContext] = useState<ContextReport | null>(null),
+    [contextPreview,setContextPreview] = useState(false),
+    [pendingSend,setPendingSend] = useState<{next:Session;report:ContextReport;settings:Workspace['settings'];draftKey:string;question:string;branchId:string|null;answerId:string}|null>(null),
     [job, setJob] = useState<Job | null>(null),
     [promotion, setPromotion] = useState<{
       branch: Branch;
       text: string;
     } | null>(null);
+  const following=useRef({main:false,panel:false});
   const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftRef=useRef(draft);draftRef.current=draft;
   const wRef = useRef(w);
   wRef.current = w;
   const mainRef = useRef<HTMLDivElement>(null),
@@ -160,7 +167,7 @@ export default function App() {
   function readPosition(el: HTMLDivElement | null) {
     if (!el) return null;
     const box = el.getBoundingClientRect();
-    const nodes = [...el.querySelectorAll<HTMLElement>('[data-message-id]')];
+    const nodes = [...el.querySelectorAll<HTMLElement>('.message[data-message-id]')];
     const visible = nodes.find(n => n.getBoundingClientRect().bottom >= box.top + 5);
     return {
       messageId: visible?.dataset.messageId ?? '',
@@ -178,7 +185,7 @@ export default function App() {
       ...s.view.positions
     };
     if (main) positions.main = main;
-    if (panel) positions[s.view.mode === 'tree' ? 'tree' : s.view.branchId ?? 'new'] = panel;
+    if (panel) positions[s.view.mode === 'tree' ? 'tree' : draftRef.current ? 'draft:'+noteDraftKey(draftRef.current.anchor) : s.view.branchId ?? 'new'] = panel;
     viewPatch(s.id, {
       positions
     });
@@ -197,12 +204,14 @@ export default function App() {
   }, [remember, viewPatch]);
   useLayoutEffect(() => {
     if (!current) return;
-    const key = `${current.id}:${current.view.mode}:${current.view.branchId}:${draft?.anchor.messageId ?? ''}`;
+    const key = `${current.id}:${current.view.mode}:${current.view.branchId}:${draft?noteDraftKey(draft.anchor):''}:${w?.settings.fontSize}:${language}`;
     if (restored.current === key) return;
     restored.current = key;
-    requestAnimationFrame(() => {
+    const frame=requestAnimationFrame(() => {
       const restore = (el: HTMLDivElement | null, p: View['positions'][string] | undefined) => {
         if (!el) return;
+        const target=el===panelRef.current?'panel':'main';
+        if(jobRef.current?.sessionId===current.id&&following.current[target]&&((target==='main'&&!jobRef.current.branchId)||(target==='panel'&&jobRef.current.branchId===current.view.branchId))){el.scrollTop=el.scrollHeight;return;}
         if (!p) {
           el.scrollTop = 0;
           return;
@@ -211,16 +220,17 @@ export default function App() {
         if (node) el.scrollTop += node.getBoundingClientRect().top - el.getBoundingClientRect().top - p.offset;else el.scrollTop = p.scrollTop;
       };
       restore(mainRef.current, current.view.positions.main);
-      restore(panelRef.current, current.view.positions[current.view.mode === 'tree' ? 'tree' : current.view.branchId ?? 'new']);
+      restore(panelRef.current, current.view.positions[current.view.mode === 'tree' ? 'tree' : draft ? 'draft:'+noteDraftKey(draft.anchor) : current.view.branchId ?? 'new']);
     });
-  }, [current?.id, current?.view.mode, current?.view.branchId, draft]);
+    return()=>cancelAnimationFrame(frame);
+  }, [current?.id, current?.view.mode, current?.view.branchId, draft,w?.settings.fontSize,language]);
   useEffect(() => {
     function escape(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         setSelection(null);
         setHistory(false);
         setMore(false);
-        setContext(null);
+        setContext(null);setPendingSend(null);
         setPromotion(null);
         if (!jobRef.current) setSettings(false);
       }
@@ -237,21 +247,12 @@ export default function App() {
     }
     const r = sel.getRangeAt(0);
     const element = (n: Node) => n.nodeType === Node.ELEMENT_NODE ? n as Element : n.parentElement;
-    const a = element(r.startContainer)?.closest<HTMLElement>('[data-source-start]'),
-      b = element(r.endContainer)?.closest<HTMLElement>('[data-source-start]');
-    if (!a || !b || a !== b || a.closest('pre, code, .katex') || r.startContainer.nodeType !== Node.TEXT_NODE || r.endContainer.nodeType !== Node.TEXT_NODE) {
-      setSelection(null);
-      return;
-    }
-    const root = a.closest<HTMLElement>('[data-message-id]');
-    if (!root) return;
-    const m = [...current.messages, ...current.branches.flatMap(b => b.messages)].find(m => m.id === root.dataset.messageId);
-    if (!m || m.role !== 'assistant' || m.status === 'streaming') return;
-    const base = Number(a.dataset.sourceStart),
-      start = base + r.startOffset,
-      end = base + r.endOffset;
-    const anchor = makeAnchor(m, start, end);
-    if (anchor.quote !== sel.toString() || !validAnchor(current, anchor)) return;
+    const root=element(r.startContainer)?.closest<HTMLElement>('[data-message-id]');
+    if(!root||root!==element(r.endContainer)?.closest('[data-message-id]')){setSelection(null);return;}
+    const m=[...current.messages,...current.branches.flatMap(b=>b.messages)].find(m=>m.id===root.dataset.messageId);
+    if(!m||m.role!=='assistant'||m.status==='streaming'){setSelection(null);return;}
+    const bounds=selectedSource(r,root);if(!bounds){setSelection(null);return;}
+    const anchor=makeAnchor(m,bounds.start,bounds.end);if(!validAnchor(current,anchor))return;
     const box = r.getBoundingClientRect();
     const parent = current.branches.find(b => b.messages.some(m => m.id === anchor.messageId));
     setSelection({
@@ -261,6 +262,8 @@ export default function App() {
       y: Math.max(12, Math.min(window.innerHeight - 52, box.top - 45))
     });
   }
+  const selectBlock=useCallback((m:Message,start:number,end:number)=>{const current=wRef.current?.sessions.find(s=>s.id===wRef.current!.activeId);if(!current)return;const anchor=makeAnchor(m,start,end);if(!validAnchor(current,anchor))return;const parent=current.branches.find(b=>b.messages.some(x=>x.id===m.id));const hit=current.branches.find(b=>b.anchor.messageId===anchor.messageId&&b.anchor.revision===anchor.revision&&b.anchor.start===start&&b.anchor.end===end);if(hit){openBranch(hit.id);return;}remember();setDraft({anchor,parentId:parent?.id??null,x:0,y:0});setSelection(null);viewPatch(current.id,{mode:'branch',branchId:null});},[remember,openBranch,viewPatch]);
+  function saveDraftNote(){if(!current||!draft)return;const note=current.view.drafts[noteDraftKey(draft!.anchor)]?.trim();if(!note||!validAnchor(current,draft.anchor))return;const b:Branch={id:uid(),parentId:draft.parentId,anchor:draft.anchor,messages:[],createdAt:Date.now(),sourceContext:snapshot(current,draft.parentId,draft.anchor),note};updateSession(current.id,s=>({...s,branches:[...s.branches,b],view:{...s.view,mode:'branch',branchId:b.id,drafts:{...s.view.drafts,[b.id]:s.view.drafts.new??'',new:'',[noteDraftKey(draft.anchor)]:''}}}));setDraft(null);}
   function createAnnotation() {
     if (!selection || !current) return;
     remember();
@@ -321,11 +324,13 @@ export default function App() {
       };
     });
   }
-  function schedulePositionSave() {
+  function schedulePositionSave(event:React.UIEvent<HTMLDivElement>) {
+    const el=event.currentTarget;following.current[el===mainRef.current?'main':'panel']=el.scrollHeight-el.scrollTop-el.clientHeight<70;
     if (scrollTimer.current) clearTimeout(scrollTimer.current);
-    scrollTimer.current = setTimeout(remember, 250);
+    remember();
   }
   async function run(j: Job, report: ContextReport, settings: Workspace['settings']) {
+    patchMessage(j,{phase:'connecting'});
     jobRef.current = j;
     setJob(j);
     let content = '',
@@ -334,9 +339,7 @@ export default function App() {
     const flush = () => {
       if (scheduled) clearTimeout(scheduled);
       scheduled = undefined;
-      patchMessage(j, {
-        text: content
-      });
+      patchMessage(j, {text:content,phase:'generating'});
     };
     try {
       await bridge.generate({
@@ -355,7 +358,7 @@ export default function App() {
           terminal = true;
           flush();
           patchMessage(j, {
-            status: 'complete'
+            status:'complete',completedAt:Date.now()
           });
         } else if (event.type === 'error') {
           flush();
@@ -375,22 +378,22 @@ export default function App() {
     } finally {
       if (scheduled) clearTimeout(scheduled);
       if (j.controller.signal.aborted) patchMessage(j, {
-        status: 'stopped'
+        status:'stopped',completedAt:Date.now()
       });
       jobRef.current = null;
       setJob(null);
     }
   }
-  function send(where: 'main' | 'branch') {
+  function send(where: 'main' | 'branch', previewOnly=false) {
     if (!current || !w || jobRef.current) return;
     const draftKey = where === 'main' ? 'main' : draft ? 'new' : current.view.branchId ?? 'new';
     const question = current.view.drafts[draftKey]?.trim();
     if (!question) return;
-    if (!bridge.desktop) {
+    if (!previewOnly && !bridge.desktop) {
       notify('Use the Windows app to connect a model. This preview supports reading and annotations.');
       return;
     }
-    if (!w.settings.model.trim()) {
+    if (!previewOnly && !w.settings.model.trim()) {
       setSettings(true);
       notify('Connect a provider and choose a model first.');
       return;
@@ -407,7 +410,8 @@ export default function App() {
         anchor: draft.anchor,
         messages: [],
         createdAt: Date.now(),
-        sourceContext: snapshot(current, draft.parentId, draft.anchor)
+        sourceContext: snapshot(current, draft.parentId, draft.anchor),
+        note: current.view.drafts[noteDraftKey(draft!.anchor)] || undefined
       };
     }
     if (where === 'branch' && !b) return;
@@ -445,20 +449,30 @@ export default function App() {
       return;
     }
     answer.context = report;
-    updateSession(current.id, () => next);
+    const plan={next,report,settings:{...w.settings},draftKey,question,branchId:b?.id??null,answerId:answer.id};
+    if(previewOnly||report.summarized){setContextPreview(true);setContext(report);setPendingSend(previewOnly?null:plan);return;}
+    executeSend(plan);
+  }
+  function executeSend(plan:NonNullable<typeof pendingSend>){
+    const {next,report,settings,draftKey,question,branchId,answerId}=plan;
+    const active=wRef.current?.sessions.find(s=>s.id===wRef.current!.activeId);
+    if(!active||active.id!==next.id||active.view.drafts[draftKey]?.trim()!==question||jobRef.current||wRef.current?.settings.activeProfileId!==settings.activeProfileId||wRef.current?.settings.model!==settings.model){setPendingSend(null);setContext(null);notify('The draft changed. Preview it again before sending.');return;}
+    following.current[branchId?'panel':'main']=true;remember();updateSession(next.id,s=>({...next,view:{...next.view,positions:s.view.positions}}));
+    setPendingSend(null);setContext(null);
     setDraft(null);
     setSelection(null);
     void run({
-      sessionId: current.id,
-      branchId: b?.id ?? null,
-      messageId: answer.id,
+      sessionId: next.id,
+      branchId,
+      messageId: answerId,
       controller: new AbortController()
-    }, report, w.settings);
+    }, report, settings);
     requestAnimationFrame(() => {
-      const el = b ? panelRef.current : mainRef.current;
+      const el = branchId ? panelRef.current : mainRef.current;
       if (el) el.scrollTop = el.scrollHeight;
     });
   }
+  useLayoutEffect(()=>{const active=jobRef.current;if(!active||active.sessionId!==current?.id)return;const target=active.branchId?'panel':'main';if(!following.current[target])return;if(active.branchId&&active.branchId!==current.view.branchId)return;const el=active.branchId?panelRef.current:mainRef.current;if(el)el.scrollTop=el.scrollHeight;},[current?.updatedAt]);
   function retry(m: Message, b: Branch | null) {
     if (!current || !w || jobRef.current || !m.context) return;
     const a = message('assistant', '', 'streaming');
@@ -559,7 +573,7 @@ export default function App() {
   const mode = w?.settings.annotations ? current?.view.mode ?? 'closed' : 'closed';
   const draftKey = draft ? 'new' : branch?.id ?? 'new';
   function card(m: Message, b: Branch | null) {
-    return <article className={`message ${m.role}`} key={m.id}><div className="message-meta"><span>{m.role === 'user' ? t("You") : 'ChatNote'}</span>{m.role === 'assistant' && <>{m.model && <span className="model-label">{m.model}</span>}{current?.example && !m.model && <span className="small muted">{t("Example")}</span>}{m.context && <button className="context-button" onClick={() => setContext(m.context!)} aria-label={t("View context")}>{m.context.summarized ? t("Abbreviated context") : t("Context")}</button>}</>}</div>{m.role === 'assistant' ? <RichText message={m} branches={current?.branches ?? []} enabled={w?.settings.annotations ?? true} activeId={branch?.id} onOpen={openBranch} /> : <p className="user-text">{m.text}</p>}{m.status === 'streaming' && <span className="stream-dot" aria-label={t("Generating")} />}{m.status === 'stopped' && <p className="small muted">{t("Stopped \xB7 partial answer saved")}</p>}{m.error && <div className="connection-error" role="alert"><strong>{t(friendlyError(m.error).title)}</strong><p>{t(friendlyError(m.error).message)}</p>{friendlyError(m.error).quota && (() => {
+    return <article className={`message ${m.role}`} data-message-id={m.id} key={m.id}><div className="message-meta"><span>{m.role === 'user' ? t("You") : 'ChatNote'}</span>{m.role === 'assistant' && <>{m.model && <span className="model-label">{m.model}</span>}{current?.example && !m.model && <span className="small muted">{t("Example")}</span>}{m.context && <button className="context-button" onClick={() => (setContextPreview(false),setPendingSend(null),setContext(m.context!))} aria-label={t("View context")}>{m.context.summarized ? t("Abbreviated context") : t("Context")}</button>}</>}</div>{m.role === 'assistant' ? <RichText message={m} branches={current?.branches ?? []} enabled={w?.settings.annotations ?? true} activeId={branch?.id} onOpen={openBranch} onSelectBlock={selectBlock} /> : <p className="user-text">{m.text}</p>}{m.role==='assistant'&&<><AnswerStatus message={m}/>{m.text&&<button className="text-button answer-copy" onClick={()=>void navigator.clipboard?.writeText(m.text).then(()=>notify('Answer copied.')).catch(()=>notify('Copy failed. Select the text and copy it manually.'))}>{t('Copy answer')}</button>}</>}{m.status === 'streaming' && <span className="stream-dot" aria-label={t("Generating")} />}{m.status === 'stopped' && <p className="small muted">{t("Stopped \xB7 partial answer saved")}</p>}{m.error && <div className="connection-error" role="alert"><strong>{t(friendlyError(m.error).title)}</strong><p>{t(friendlyError(m.error).message)}</p>{friendlyError(m.error).quota && (() => {
           const p = w?.settings.profiles?.find(p => p.id === m.connectionId) ?? activeProfile(w!.settings);
           const url = p ? usageUrl(p) : "";
           return url ? <button className="text-button" onClick={() => void bridge.openUrl(url).catch(e => notify(String(e)))}>{t("Open provider usage page")}</button> : null;
@@ -575,7 +589,7 @@ export default function App() {
           e.preventDefault();
           send(where);
         }
-      }} /><div className="composer-footer"><span>{where === 'main' ? t("Main conversation") : t("Only in this annotation")}</span>{job ? <button className="send stop" type="button" onClick={stop} aria-label={t("Stop generation")}><Square size={13} fill="currentColor" /></button> : <button className="send" type="submit" disabled={!current?.view.drafts[key]?.trim()} aria-label={where === 'main' ? t("Send main message") : t("Send annotation message")}><ArrowUp size={18} /></button>}</div></form>;
+      }} /><div className="composer-footer"><button type="button" className="text-button context-preview" disabled={!!job||!current?.view.drafts[key]?.trim()} onClick={()=>send(where,true)}>{t('Preview context')}</button><span>{where === 'main' ? t("Main conversation") : t("Only in this annotation")}</span>{job ? <button className="send stop" type="button" onClick={stop} aria-label={t("Stop generation")}><Square size={13} fill="currentColor" /></button> : <button className="send" type="submit" disabled={!current?.view.drafts[key]?.trim()} aria-label={where === 'main' ? t("Send main message") : t("Send annotation message")}><ArrowUp size={18} /></button>}</div></form>;
   }
   function treeNode(b: Branch, depth: number): React.ReactNode {
     const children = current!.branches.filter(x => x.parentId === b.id),
@@ -652,7 +666,7 @@ export default function App() {
           }}>{t("Delete conversation\u2026")}</button></div>}</header>
     <div className={`content-layout ${mode !== 'closed' ? 'with-panel' : ''}`}><main className="main-column"><div className="main-scroll" ref={mainRef} onScroll={schedulePositionSave}>
       {!current.messages.length ? <div className="welcome"><div className="welcome-icon">◈</div><span className="eyebrow">{t("A LITTLE MORE ROOM TO THINK")}</span><h1>{t("Follow your curiosity.")}<br /><span>{t("Keep your thread.")}</span></h1><p>{t("A conversation for the big picture.")}<br />{t("Annotations for everything worth exploring.")}</p><div className="starter-grid">{['Help me understand a complex topic', 'Think through an idea with me', 'Turn a question into a learning path'].map((q, i) => <button key={q} onClick={() => setDraftText('main', t(q))}><span>{String(i + 1).padStart(2, '0')}</span>{t(q)}<ArrowUp size={14} /></button>)}</div><button className="example-link" onClick={() => addSession(true)}>{t("Explore the annotation example")}<ArrowUp size={13} /></button></div> : <div className="transcript">{current.example && <div className="example-banner"><span className="eyebrow">{t("INTERACTIVE EXAMPLE")}</span><span>{t("These starting answers are examples. New messages use your connected model.")}</span></div>}{current.messages.map(m => card(m, null))}<div className="transcript-end" /></div>}
-    </div><div className="main-compose">{composer('main')}<div className="under-composer"><span>{current.messages.length && w.settings.annotations ? t("Select a passage to ask in an annotation.") : t("A quieter space for deeper questions.")}</span><span>{w.settings.model || t("Connect a model in Settings")}</span></div></div></main>
+    </div>{job?.sessionId===current.id&&!job.branchId&&!following.current.main&&<button className="jump-latest" onClick={()=>{following.current.main=true;mainRef.current?.scrollTo({top:mainRef.current.scrollHeight});}}>{t('Jump to latest answer')}</button>}<div className="main-compose">{composer('main')}<div className="under-composer"><span>{current.messages.length && w.settings.annotations ? t("Select a passage to ask in an annotation.") : t("A quieter space for deeper questions.")}</span><span>{w.settings.model || t("Connect a model in Settings")}</span></div></div></main>
     {mode !== 'closed' && <aside className="annotation-panel"><header className="panel-header"><div><span className="eyebrow">{mode === 'tree' ? t("REVIEW & NAVIGATE") : draft ? t("SELECTED PASSAGE") : t("PASSAGE FOLLOW-UP")}</span><h2>{mode === 'tree' ? t("Follow-up tree") : draft ? t("New annotation") : t("Annotation")}{mode !== 'tree' && branch && <span className="level">{ancestry(current, branch.id).length > 1 ? t('levelLabel', {count:n(ancestry(current, branch.id).length)}) : ''}</span>}</h2></div><button className="icon-button" aria-label={t("Close annotation panel")} onClick={() => {
               remember();
               viewPatch(current.id, {
@@ -660,7 +674,7 @@ export default function App() {
               });
               setDraft(null);
             }}><X size={18} /></button></header>
-      <div className="panel-scroll" ref={panelRef} onScroll={schedulePositionSave}>{mode === 'tree' ? <><p className="panel-intro">{t("A trail of questions, each connected to its source.")}</p><div className="tree-root"><MessageSquare size={15} />{current.title}</div>{current.branches.filter(b => b.parentId === null).map(b => treeNode(b, 0))}{!current.branches.length && <div className="empty-panel"><Layers3 size={27} /><p>{t("Your questions will grow here.")}</p><span>{t("Select a passage in an answer to begin.")}</span></div>}</> : <>{(draft || branch) && <div className="source-card"><span className="eyebrow">{draft?.parentId ?? branch?.parentId ? t("PARENT ANNOTATION") : t("MAIN CONVERSATION")}</span><blockquote>{draft?.anchor.quote ?? branch?.anchor.quote}</blockquote><button onClick={() => jumpSource(draft?.anchor ?? branch!.anchor, draft ? draft.parentId : branch!.parentId)}>{t("Jump to source")}<ArrowUp size={12} /></button></div>}{branch && !draft && <>{branch.parentId && <button className="parent-link" onClick={() => openBranch(branch.parentId!)}><ArrowLeft size={13} />{t("Back to parent annotation")}</button>}{branch.messages.map(m => card(m, branch))}{branch.messages.some(m => m.role === 'assistant' && m.status === 'complete') && <button className="promote-button" onClick={() => {
+      <div className="panel-scroll" ref={panelRef} onScroll={schedulePositionSave}>{mode === 'tree' ? <><p className="panel-intro">{t("A trail of questions, each connected to its source.")}</p><div className="tree-root"><MessageSquare size={15} />{current.title}</div>{current.branches.filter(b => b.parentId === null).map(b => treeNode(b, 0))}{!current.branches.length && <div className="empty-panel"><Layers3 size={27} /><p>{t("Your questions will grow here.")}</p><span>{t("Select a passage in an answer to begin.")}</span></div>}</> : <>{(draft || branch) && <div className="source-card"><span className="eyebrow">{draft?.parentId ?? branch?.parentId ? t("PARENT ANNOTATION") : t("MAIN CONVERSATION")}</span><blockquote>{draft?.anchor.quote ?? branch?.anchor.quote}</blockquote><button onClick={() => jumpSource(draft?.anchor ?? branch!.anchor, draft ? draft.parentId : branch!.parentId)}>{t("Jump to source")}<ArrowUp size={12} /></button></div>}{(branch||draft)&&<details className="private-note" open={!!branch?.note}><summary>{t('Private note')}</summary><p className="small muted">{t('Only saved locally. Not included in model requests.')}</p><textarea maxLength={50000} aria-label={t('Private note')} placeholder={t('Write your own understanding or questions…')} value={draft?current.view.drafts[noteDraftKey(draft!.anchor)]??'':branch?.note??''} onChange={e=>{const note=e.target.value;if(draft)setDraftText(noteDraftKey(draft.anchor),note);else if(branch)updateSession(current.id,s=>({...s,branches:s.branches.map(b=>b.id===branch.id?{...b,note}:b)}));}}/>{draft&&<button className="text-button" disabled={!current.view.drafts[noteDraftKey(draft!.anchor)]?.trim()} onClick={saveDraftNote}>{t('Save private note')}</button>}</details>}{branch && !draft && <>{branch.parentId && <button className="parent-link" onClick={() => openBranch(branch.parentId!)}><ArrowLeft size={13} />{t("Back to parent annotation")}</button>}{branch.messages.map(m => card(m, branch))}{branch.messages.some(m => m.role === 'assistant' && m.status === 'complete') && <button className="promote-button" onClick={() => {
                   const answer = branch.messages.filter(m => m.role === 'assistant' && m.status === 'complete').at(-1)!;
                   setPromotion({
                     branch,
@@ -682,7 +696,7 @@ export default function App() {
       setW(next);
       await bridge.saveWorkspace(next);
     }} onClose={() => setSettings(false)} onNotice={notify} />}
-    {context && <div className="modal-backdrop"><section className="modal context-modal" role="dialog" aria-modal="true" aria-label={t("Context details")}><header><div><span className="eyebrow">{t("WHAT THE MODEL RECEIVED")}</span><h2>{t("Context details")}</h2></div><button className="icon-button" aria-label={t("Close context")} onClick={() => setContext(null)}><X size={18} /></button></header><p>{t(context.source)}</p><p className="muted">{t('contextSize',{count:n(context.characters),budget:n(context.budget)})}</p><p className={context.summarized ? 'notice' : 'muted'}>{context.summarized ? t('abbreviationNote',{count:n(context.omittedTurns)}) : t("No history abbreviation was needed for this request.")}</p><div className="context-list">{context.items.map((i, index) => <details key={index}><summary>{t(i.role==='user'?'You':'Assistant')} · {t('characterCount',{count:n(i.content.length)})}</summary><pre>{i.content}</pre></details>)}</div></section></div>}
+    {context && <div className="modal-backdrop"><section className="modal context-modal" role="dialog" aria-modal="true" aria-label={t("Context details")}><header><div><span className="eyebrow">{t(contextPreview?'BEFORE SENDING':'WHAT THE MODEL RECEIVED')}</span><h2>{t("Context details")}</h2></div><button className="icon-button" aria-label={t("Close context")} onClick={() => {setContext(null);setPendingSend(null);}}><X size={18} /></button></header><p>{t(context.source)}</p><p className="muted">{t('contextSize',{count:n(context.characters),budget:n(context.budget)})}</p><p className={context.summarized ? 'notice' : 'muted'}>{context.summarized ? t('abbreviationNote',{count:n(context.omittedTurns)}) : t("No history abbreviation was needed for this request.")}</p>{pendingSend&&<p className="notice">{t('Older history will be shortened for this request. Your full records stay saved. Review the excerpts before sending.')}</p>}<div className="context-list">{context.items.map((i, index) => <details key={index}><summary>{t(i.role==='user'?'You':'Assistant')} · {t('characterCount',{count:n(i.content.length)})}</summary><pre>{i.content}</pre></details>)}</div>{pendingSend&&<footer><button onClick={()=>{setContext(null);setPendingSend(null);}}>{t('Keep editing')}</button><button className="primary" onClick={()=>executeSend(pendingSend)}>{t('Send with this context')}</button></footer>}</section></div>}
     {promotion && <div className="modal-backdrop"><section className="modal" role="dialog" aria-modal="true" aria-label={t("Bring conclusion to main")}><header><h2>{t("Bring a conclusion back")}</h2><button className="icon-button" aria-label={t("Cancel conclusion")} onClick={() => setPromotion(null)}><X size={18} /></button></header><p className="muted">{t("Edit the conclusion before adding it to the main conversation. Its source stays linked.")}</p><textarea className="promotion-text" value={promotion.text} onChange={e => setPromotion({
           ...promotion,
           text: e.target.value

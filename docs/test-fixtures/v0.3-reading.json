@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "sessions": [
+    {
+      "id": "ed4262e1-e899-46e2-a5ed-652af246d243",
+      "title": "[v0.3 测试示例] 公式与代码阅读",
+      "createdAt": 1791453625632,
+      "updatedAt": 1791453625632,
+      "messages": [
+        {
+          "id": "0e994673-ffd3-4372-b4b0-4d6900f65d33",
+          "revision": "4327cc90-f7d0-4484-8d9e-cf2675302383",
+          "role": "user",
+          "text": "请用公式与代码解释注意力机制。",
+          "status": "complete",
+          "createdAt": 1791453625632
+        },
+        {
+          "id": "0e70475a-96b1-4207-a167-a1646fdbe132",
+          "revision": "daa5319e-5ac3-4521-93b3-9fc3d7823e2c",
+          "role": "assistant",
+          "text": "## 公式、代码与原文追问\n\n同一个问题可以沿主线阅读，也可以选中 **关键推导**，在右侧继续深入。\n\n内联公式：\\(E = mc^2\\)。\n\n\\[\\mathrm{Attention}(Q,K,V)=\\mathrm{softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)V\\]\n\n```python\ndef attention(q, k, v):\n    weights = softmax(q @ k.T / sqrt(k.shape[-1]))\n    return weights @ v\n```\n\n代码可以选中一段建立批注；公式可以整式批注，锚点仍保留原始 LaTeX。",
+          "status": "complete",
+          "createdAt": 1791453625632,
+          "completedAt": 1791453628632
+        }
+      ],
+      "branches": [
+        {
+          "id": "3fc1dabe-def5-4c9a-a199-cebe2d04ab9d",
+          "parentId": null,
+          "anchor": {
+            "messageId": "0e70475a-96b1-4207-a167-a1646fdbe132",
+            "revision": "daa5319e-5ac3-4521-93b3-9fc3d7823e2c",
+            "start": 36,
+            "end": 40,
+            "quote": "关键推导",
+            "prefix": "## 公式、代码与原文追问\n\n同一个问题可以沿主线阅读，也可以选中 **",
+            "suffix": "**，在右侧继续深入。\n\n内联公式：\\(E = mc^2\\)。\n\n\\[\\mathrm{Attention}(Q,K,V)"
+          },
+          "messages": [],
+          "createdAt": 1791453625632,
+          "sourceContext": [
+            {
+              "role": "assistant",
+              "content": "## 公式、代码与原文追问\n\n同一个问题可以沿主线阅读，也可以选中 **关键推导**，在右侧继续深入。\n\n内联公式：\\(E = mc^2\\)。\n\n\\[\\mathrm{Attention}(Q,K,V)=\\mathrm{softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)V\\]\n\n```python\ndef attention(q, k, v):\n    weights = softmax(q @ k.T / sqrt(k.shape[-1]))\n    return weights @ v\n```\n\n代码可以选中一段建立批注；公式可以整式批注，锚点仍保留原始 LaTeX。"
+            }
+          ],
+          "note": "我的理解：主线负责完整推导，私人笔记记录自己的疑问。\n这段笔记只保存在本机，不会加入模型请求。"
+        }
+      ],
+      "view": {
+        "mode": "branch",
+        "branchId": "3fc1dabe-def5-4c9a-a199-cebe2d04ab9d",
+        "drafts": {},
+        "positions": {},
+        "collapsed": []
+      },
+      "example": true
+    }
+  ],
+  "activeId": "ed4262e1-e899-46e2-a5ed-652af246d243",
+  "settings": {
+    "provider": "openai",
+    "endpoint": "https://api.openai.com/v1",
+    "model": "",
+    "fontSize": 15,
+    "annotations": true,
+    "theme": "dark",
+    "contextBudget": 48000,
+    "language": "zh-Hans"
+  }
+}

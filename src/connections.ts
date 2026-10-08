@@ -22,6 +22,7 @@ export function usageUrl(p:ConnectionProfile):string { if(p.provider==='chatgpt'
 export function friendlyError(input:unknown):{ title:string; message:string; detail:string; quota:boolean } {
   const detail=typeof input==='string'?input:input instanceof Error?input.message:JSON.stringify(input);
   const text=detail.toLowerCase();const result=(title:string,message:string,quota=false)=>({title,message,detail,quota});
+  if(/session renewal is temporarily unavailable/.test(text))return result('Temporary ChatGPT connection problem','Your saved session was kept. Check your network or retry later; disconnecting is not needed for a temporary error.');
   if(/sign-in was cancelled/.test(text))return result('Sign-in cancelled','Close the old authorization tab before trying again. Your saved registration and conversations are kept.');
   if(/sign-in timed out/.test(text))return result('Browser authorization timed out','Close the old authorization tab and start sign-in again. If the browser page also times out, check its connection to ChatGPT. Your saved registration is kept.');
   if(/sign-in service/.test(text))return result('Could not reach the sign-in service','Check your network and try again later. This check uses no model quota and does not change your saved connection.');

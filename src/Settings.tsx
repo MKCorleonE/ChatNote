@@ -139,7 +139,7 @@ export default function Settings({
     select(p.id);
   }
   const ready = profile.provider === 'chatgpt' ? status?.connected && status.planUsage : status?.hasKey && status.endpointMatches;
-  const stateText = !bridge.desktop ? 'Desktop connection' : !status ? 'Checking saved connection…' : profile.provider === 'chatgpt' ? status.connected ? status.planUsage ? 'Account connected · plan permission enabled' : 'Account connected · plan permission missing' : 'Not connected' : status.hasKey ? status.endpointMatches ? 'Key saved securely' : 'Address and saved key do not match' : 'No key saved';
+  const stateText = !bridge.desktop ? 'Desktop connection' : !status ? 'Checking saved connection…' : profile.provider === 'chatgpt' ? status.connected ? status.planUsage ? status.refreshable ? 'Saved account · automatic renewal available' : 'Account connected · plan permission enabled' : 'Account connected · plan permission missing' : status.registered ? 'Saved registration · sign in to resume' : 'Not connected' : status.hasKey ? status.endpointMatches ? 'Key saved securely' : 'Address and saved key do not match' : 'No key saved';
   const externalUrl = usage?.url ?? usageUrl(profile);
   return <div className="modal-backdrop" onClick={e => {
     if (e.target === e.currentTarget && !busy) onClose();
@@ -223,7 +223,7 @@ export default function Settings({
             ...c,
             contextBudget: Number(e.target.value)
           }))}>{[16000, 48000, 96000, 192000].map(count => <option key={count} value={count}>{t('characterCount',{count:n(count)})}</option>)}</select><span className="small muted">{t("A local character budget, not an exact token limit. Older content may be abbreviated; originals remain saved.")}</span></label>
-    </div><footer><span className="small muted">ChatNote · 0.2.1</span><button className="primary" disabled={busy || config.profiles!.some(p => !p.name.trim())} onClick={() => action(async () => {
+    </div><footer><span className="small muted">ChatNote · 0.3.0</span><button className="primary" disabled={busy || config.profiles!.some(p => !p.name.trim())} onClick={() => action(async () => {
           await saveKey();
           await onChange(syncActive(config));
           onClose();

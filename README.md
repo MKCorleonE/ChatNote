@@ -18,16 +18,18 @@ ChatNote 是独立的跨平台 AI 对话与笔记软件项目，目标平台为 
 
 当前实现：TypeScript + React 界面、Tauri 2 应用外壳、Rust 系统能力与 SQLite 本地存储。
 
-Windows v0.2.1 内测版已构建，新增登录取消、重试恢复说明与手动检查登录连接，新增英语/简体/繁体界面，设置中的语言切换立即生效并保存。除主线/递归批注、追问树与本地保存外，新增 DeepSeek/Qwen 预设、独立连接档案、一键切换、模型目录检查、DeepSeek 余额查询和分类错误。2026-10-08 用户已验证旧版 ChatGPT 套餐登录与对话；国内真实账号及连接生命周期仍待分别实测。
+v0.3.0 扩大代码/公式/格式选区，补齐常见公式写法，新增私人批注笔记、发送前上下文确认和回答状态小字，并完善阅读位置与会话续期提示。
 
-- [v0.2.1 Windows 安装包](https://github.com/MKCorleonE/ChatNote/releases/download/v0.2.1/ChatNote_0.2.1_x64-setup.exe)
-- [v0.2.1 可直接启动的程序](https://github.com/MKCorleonE/ChatNote/releases/download/v0.2.1/ChatNote_0.2.1.exe)
-- [v0.2.1 使用与验证](docs/V0.2.1_VALIDATION.md)
+Windows v0.3.0 内测版已构建，新增登录取消、重试恢复说明与手动检查登录连接，新增英语/简体/繁体界面，设置中的语言切换立即生效并保存。除主线/递归批注、追问树与本地保存外，新增 DeepSeek/Qwen 预设、独立连接档案、一键切换、模型目录检查、DeepSeek 余额查询和分类错误。2026-10-08 用户已验证旧版 ChatGPT 套餐登录与对话；国内真实账号及连接生命周期仍待分别实测。
+
+- [v0.3.0 Windows 安装包](https://github.com/MKCorleonE/ChatNote/releases/download/v0.3.0/ChatNote_0.3.0_x64-setup.exe)
+- [v0.3.0 可直接启动的程序](https://github.com/MKCorleonE/ChatNote/releases/download/v0.3.0/ChatNote_0.3.0.exe)
+- [v0.3.0 使用与验证](docs/V0.3.0_VALIDATION.md)
 - [版本保留规则](docs/RELEASE_POLICY.md)
 - [国际化维护说明](docs/INTERNATIONALIZATION.md)
 - [v0.1.0 基线验证](docs/BUILD_AND_VALIDATION.md)
 
-升级时先退出旧版，再启动新版或运行安装包。原程序标识、数据库与 ChatGPT 登录路径保留。本机常用目录保留 v0.2.1 和 v0.2.0，v0.1.0/v0.1.1 保存在 releases/archive。私有下载链接需要登录有仓库权限的 GitHub 账号。
+升级时先退出旧版，再启动新版或运行安装包。原程序标识、数据库与 ChatGPT 登录路径保留。本机常用目录保留 v0.3.0 和 v0.2.1，v0.1.0/v0.1.1 保存在 releases/archive。私有下载链接需要登录有仓库权限的 GitHub 账号。
 
 开发入口在根目录：`npm run dev`；界面测试为 `npm test`；桌面构建为 `npm run desktop:build`。`prototype` 目录保留早期独立演示。
 

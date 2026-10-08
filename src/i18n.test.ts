@@ -12,7 +12,7 @@ test('Every locale has complete messages and matching interpolation placeholders
 });
 test('All literal translation calls have English fallback resources',()=>{
   const sources=import.meta.glob<string>(['./*.tsx','./core.ts'],{query:'?raw',import:'default',eager:true});
-  for(const file of ['src/App.tsx','src/Settings.tsx','src/RichText.tsx','src/core.ts']){
+  for(const file of ['src/App.tsx','src/Settings.tsx','src/RichText.tsx','src/AnswerStatus.tsx','src/core.ts']){
     const ast=ts.createSourceFile(file,sources[file.replace('src/','./')],ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
     function visit(node:ts.Node){if(ts.isCallExpression(node)&&ts.isIdentifier(node.expression)&&node.expression.text==='t'&&node.arguments[0]&&ts.isStringLiteral(node.arguments[0]))expect(catalogs.en[node.arguments[0].text],`${file}: ${node.arguments[0].text}`).toBeDefined();ts.forEachChild(node,visit);}
     visit(ast);

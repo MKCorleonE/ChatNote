@@ -21,6 +21,8 @@ pub struct Connection {
     email: Option<String>,
     plan_usage: bool,
     legacy_compatible_endpoint: Option<String>,
+    registered: bool,
+    refreshable: bool,
 }
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Tokens {
@@ -86,6 +88,8 @@ pub fn connection_status() -> Result<Connection, String> {
         legacy_compatible_endpoint: read_secret("compatible")?
             .and_then(|s| serde_json::from_str::<ApiKey>(&s).ok())
             .map(|r| r.endpoint),
+        registered: read_secret("chatgpt-registration")?.is_some(),
+        refreshable: token.as_ref().is_some_and(|t| t.refresh_token.is_some()),
     })
 }
 #[tauri::command]
@@ -135,6 +139,8 @@ pub struct ProfileStatus {
     connected: bool,
     plan_usage: bool,
     email: Option<String>,
+    registered: bool,
+    refreshable: bool,
 }
 #[tauri::command]
 pub fn profile_status(
@@ -150,6 +156,8 @@ pub fn profile_status(
             connected: info.chatgpt,
             plan_usage: info.plan_usage,
             email: info.email,
+            registered: info.registered,
+            refreshable: info.refreshable,
         });
     }
     let name = profile_entry(&provider, Some(&profile_id))?;
@@ -165,6 +173,8 @@ pub fn profile_status(
         connected: record.is_some() && matches,
         plan_usage: false,
         email: None,
+        registered: false,
+        refreshable: false,
     })
 }
 #[tauri::command]
@@ -294,6 +304,13 @@ async fn validate_id(
     }
     Ok(claims)
 }
+fn refresh_failure(status: u16, code: &str) -> String {
+    if status == 401 || code == "invalid_grant" {
+        "Your ChatGPT session expired or was revoked. Sign in again; your registration and conversations are kept.".into()
+    } else {
+        "ChatGPT session renewal is temporarily unavailable. Your saved session was kept. Retry later without disconnecting.".into()
+    }
+}
 pub async fn credential(
     provider: &str,
     base: &str,
@@ -335,12 +352,14 @@ pub async fn credential(
             ])
             .send()
             .await
-            .map_err(|_| "Could not refresh the ChatGPT connection")?;
+            .map_err(|_| "ChatGPT session renewal is temporarily unavailable. Your saved session was kept. Retry later without disconnecting.")?;
         if !response.status().is_success() {
-            return Err(
-                "Your ChatGPT connection expired or was revoked. Disconnect and sign in again."
-                    .into(),
-            );
+            let status = response.status().as_u16();
+            let error = response.json::<Value>().await.unwrap_or_default();
+            return Err(refresh_failure(
+                status,
+                error["error"].as_str().unwrap_or(""),
+            ));
         }
         let data: Value = response
             .json()
@@ -718,6 +737,14 @@ async fn sign_in_inner(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn renewal_outage_is_not_reported_as_revocation() {
+        for code in [429, 500, 502, 503] {
+            assert!(refresh_failure(code, "").contains("temporarily"));
+        }
+        assert!(refresh_failure(400, "invalid_grant").contains("Sign in again"));
+        assert!(!refresh_failure(503, "").contains("Disconnect"));
+    }
     #[test]
     fn cancelled_attempt_cleans_up_and_does_not_cancel_a_later_attempt() {
         let (first, mut old) = tokio::sync::watch::channel(false);

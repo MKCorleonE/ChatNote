@@ -1,7 +1,7 @@
 import { vi, test, expect, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { emptyWorkspace, exampleSession } from './core';
+import { emptyWorkspace, exampleSession, message, contextFor } from './core';
 import type { Generation, StreamEvent, Workspace } from './types';
 const store=vi.hoisted(()=>({initial:null as Workspace|null,saved:null as Workspace|null,requests:[] as Generation[],slow:false}));
 vi.mock('./bridge',()=>({desktop:true,loadWorkspace:async()=>structuredClone(store.initial),saveWorkspace:async(w:Workspace)=>{store.saved=structuredClone(w);},profileStatus:async()=>({connected:true,planUsage:true,hasKey:true,endpointMatches:true}),openUrl:async()=>{},connection:async()=>({apiKey:true,compatibleKey:false,chatgpt:false}),models:async()=>[{id:'test-model',name:'Test model'}],setKey:async()=>{},signIn:async()=>({chatgpt:true}),signOut:async()=>{},saveFile:async()=>true,generate:async(req:Generation,onEvent:(e:StreamEvent)=>void,signal:AbortSignal)=>{store.requests.push(req);if(store.slow){await new Promise<void>((resolve,reject)=>{const timer=setTimeout(resolve,2000);signal.addEventListener('abort',()=>{clearTimeout(timer);reject(new Error('aborted'));},{once:true});});}onEvent({type:'delta',text:'A branch can explain this detail. '});await new Promise(r=>setTimeout(r,10));onEvent({type:'delta',text:'We keep context separate.'});onEvent({type:'done'});}}));
@@ -9,6 +9,33 @@ import App from './App';
 vi.mock('@tauri-apps/api/window',()=>({getCurrentWindow:()=>({onCloseRequested:async()=>()=>{},destroy:async()=>{}})}));
 beforeEach(()=>{const w=emptyWorkspace(),s=exampleSession();w.sessions=[s];w.activeId=s.id;w.settings.model='test-model';w.settings.profiles!.find(p=>p.id===w.settings.activeProfileId)!.model='test-model';store.initial=w;store.saved=null;store.requests=[];store.slow=false;window.getSelection()?.removeAllRanges();});
 async function selectPhrase(phrase:string){const span=[...document.querySelectorAll<HTMLElement>('[data-source-start]')].find(n=>n.childNodes.length===1&&n.firstChild?.nodeType===Node.TEXT_NODE&&n.textContent?.includes(phrase));expect(span).toBeDefined();const text=span!.firstChild!,start=text.textContent!.indexOf(phrase);const range=document.createRange();range.setStart(text,start);range.setEnd(text,start+phrase.length);window.getSelection()!.removeAllRanges();window.getSelection()!.addRange(range);fireEvent.mouseUp(span!);await screen.findByRole('button',{name:'Ask in annotation'});fireEvent.click(screen.getByRole('button',{name:'Ask in annotation'}));}
+test('Private notes save without a model request and remain excluded from later annotation requests',async()=>{
+  const user=userEvent.setup();render(<App/>);await screen.findByText('Three representations, three roles');
+  const editor=screen.getByRole('textbox',{name:'Private note'});await user.type(editor,'PRIVATE_NOTE_DO_NOT_SEND');
+  await waitFor(()=>expect(store.saved?.sessions[0].branches[0].note).toBe('PRIVATE_NOTE_DO_NOT_SEND'));
+  expect(store.requests).toHaveLength(0);await user.type(screen.getByRole('textbox',{name:'Message this annotation'}),'Explain again');
+  await user.click(screen.getAllByRole('button',{name:'Preview context'}).find(button=>!button.hasAttribute('disabled'))!);await screen.findByRole('dialog',{name:'Context details'});expect(document.querySelector('.context-list')?.textContent).not.toContain('PRIVATE_NOTE_DO_NOT_SEND');
+  await user.click(screen.getByRole('button',{name:'Close context'}));await user.click(screen.getByRole('button',{name:'Send annotation message'}));await screen.findByText(/We keep context separate/);
+  expect(JSON.stringify(store.requests[0])).not.toContain('PRIVATE_NOTE_DO_NOT_SEND');expect(store.saved?.sessions[0].branches[0].note).toBe('PRIVATE_NOTE_DO_NOT_SEND');
+});
+test('A source can have a standalone private note before any annotation question is sent',async()=>{
+  const user=userEvent.setup();render(<App/>);await screen.findByText('Three representations, three roles');await selectPhrase('Q describes');
+  await user.type(screen.getByRole('textbox',{name:'Message this annotation'}),'Unsent note question');await user.type(screen.getByRole('textbox',{name:'Private note'}),'Local interpretation');await user.click(screen.getByRole('button',{name:'Save private note'}));
+  await waitFor(()=>expect(store.saved?.sessions[0].branches).toHaveLength(2));const b=store.saved!.sessions[0].branches.at(-1)!;expect(b.messages).toHaveLength(0);expect(b.note).toBe('Local interpretation');expect(b.anchor.quote).toBe('Q describes');expect(store.requests).toHaveLength(0);expect((screen.getByRole('textbox',{name:'Message this annotation'})as HTMLTextAreaElement).value).toBe('Unsent note question');
+});
+test('Switching an annotation restores the main reading position even immediately after scrolling',async()=>{
+  render(<App/>);await screen.findByText('Three representations, three roles');const main=document.querySelector('.main-scroll')! as HTMLElement;
+  main.scrollTop=260;fireEvent.scroll(main);fireEvent.click(screen.getByRole('button',{name:/Follow-up tree/}));
+  await waitFor(()=>expect(store.saved?.sessions[0].view.positions.main.scrollTop).toBe(260));
+  expect(main.scrollTop).toBe(260);
+});
+test('Abbreviated history requires review before sending and sends the exact reviewed context',async()=>{
+  const w=store.initial!,s=w.sessions[0];s.messages=[message('user','Old question'),message('assistant','Old detail '.repeat(1400))];s.branches=[];s.view.mode='closed';s.view.branchId=null;w.settings.contextBudget=8000;
+  const user=userEvent.setup();render(<App/>);await screen.findByText(/Old detail/);await user.type(screen.getByRole('textbox',{name:'Message the main conversation'}),'Current question');
+  await user.click(screen.getByRole('button',{name:'Send main message'}));await screen.findByRole('button',{name:'Send with this context'});expect(store.requests).toHaveLength(0);
+  const preview=document.querySelector('.context-list')!.textContent!;expect(preview).toContain('abbreviated extract');expect((screen.getByRole('textbox',{name:'Message the main conversation'})as HTMLTextAreaElement).value).toBe('Current question');
+  await user.click(screen.getByRole('button',{name:'Send with this context'}));await screen.findByText(/We keep context separate/);expect(store.requests).toHaveLength(1);expect(JSON.stringify(store.requests[0].input)).toContain('abbreviated extract');
+});
 test('Live language switching preserves active conversations, drafts and connection edits, then survives reload',async()=>{
   const user=userEvent.setup(),original=structuredClone(store.initial!);
   const view=render(<App/>);await screen.findByText('Three representations, three roles');
