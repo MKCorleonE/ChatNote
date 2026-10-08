@@ -15,6 +15,8 @@ pub struct Request {
     instructions: String,
     #[serde(default)]
     profile_id: Option<String>,
+    #[serde(default)]
+    reasoning_effort: Option<String>,
 }
 #[derive(Clone, Serialize)]
 pub struct StreamEvent {
@@ -23,9 +25,49 @@ pub struct StreamEvent {
     error: Option<String>,
 }
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Model {
     id: String,
     name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reasoning_efforts: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    default_reasoning_effort: Option<String>,
+}
+fn valid_effort(value: &str) -> bool {
+    matches!(
+        value,
+        "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max" | "ultra"
+    )
+}
+fn reasoning_levels(model: &Value) -> Option<Vec<String>> {
+    model["supported_reasoning_levels"]
+        .as_array()
+        .map(|levels| {
+            levels
+                .iter()
+                .filter_map(|level| level["effort"].as_str().or(level.as_str()))
+                .filter(|effort| valid_effort(effort))
+                .map(str::to_owned)
+                .collect()
+        })
+}
+fn request_body(request: &Request) -> Result<Value, String> {
+    let compatible = request.provider == "compatible";
+    let mut body = if compatible {
+        let mut messages = vec![json!({"role":"system","content":request.instructions})];
+        messages.extend(request.input.clone());
+        json!({"model":request.model,"messages":messages,"stream":true})
+    } else {
+        json!({"model":request.model,"input":request.input,"instructions":request.instructions,"stream":true,"store":false})
+    };
+    if let Some(effort) = &request.reasoning_effort {
+        if compatible || !valid_effort(effort) {
+            return Err("This connection does not support the selected reasoning effort".into());
+        }
+        body["reasoning"] = json!({"effort":effort});
+    }
+    Ok(body)
 }
 pub fn client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
@@ -111,6 +153,7 @@ pub async fn list_models(
         client()?
             .get(format!("{base}/models"))
             .bearer_auth(&secret)
+            .timeout(std::time::Duration::from_secs(20))
             .send()
             .await
             .map_err(|_| {
@@ -126,10 +169,16 @@ pub async fn list_models(
             .ok_or("The ChatGPT account did not return a model catalog")?
             .iter()
             .filter(|m| m["visibility"] == "list")
+            .take(1000)
             .filter_map(|m| {
                 Some(Model {
                     id: m["slug"].as_str()?.into(),
                     name: m["display_name"].as_str()?.into(),
+                    reasoning_efforts: reasoning_levels(m),
+                    default_reasoning_effort: m["default_reasoning_level"]
+                        .as_str()
+                        .filter(|e| valid_effort(e))
+                        .map(str::to_owned),
                 })
             })
             .collect()
@@ -138,10 +187,13 @@ pub async fn list_models(
             .as_array()
             .ok_or("The provider did not return a model catalog")?
             .iter()
+            .take(1000)
             .filter_map(|m| {
                 Some(Model {
                     id: m["id"].as_str()?.into(),
                     name: m["id"].as_str()?.into(),
+                    reasoning_efforts: None,
+                    default_reasoning_effort: None,
                 })
             })
             .collect()
@@ -280,6 +332,7 @@ pub async fn generate(
         return Err("Invalid model request".into());
     }
     let base = endpoint(&request.provider, &request.endpoint)?;
+    let body = request_body(&request)?;
     let (cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
     {
         let mut jobs = state.jobs.lock().map_err(|_| "Request lock failed")?;
@@ -290,7 +343,6 @@ pub async fn generate(
     }
     let result=async {
         let secret=auth::credential(&request.provider,&base,request.profile_id.as_deref()).await?;let compatible=request.provider=="compatible";
-        let body=if compatible {let mut messages=vec![json!({"role":"system","content":request.instructions})];messages.extend(request.input.clone());json!({"model":request.model,"messages":messages,"stream":true})}else{json!({"model":request.model,"input":request.input,"instructions":request.instructions,"stream":true,"store":false})};
         let pending=client()?.post(format!("{base}/{}",if compatible{"chat/completions"}else{"responses"})).bearer_auth(&secret).json(&body).send();
         let response=tokio::select!{r=pending=>r.map_err(|_|"Could not connect to the model provider. Check your network.")?, _=cancel_rx.changed()=>return Ok(())};
         let response=checked(response,&secret).await?;let mut stream=response.bytes_stream();let mut parser=Sse::new();let mut complete=false;
@@ -314,6 +366,44 @@ pub async fn generate(
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn example_request(provider: &str, effort: Option<&str>) -> Request {
+        Request {
+            request_id: "test".into(),
+            provider: provider.into(),
+            endpoint: "https://api.openai.com/v1".into(),
+            model: "gpt-5.6-sol".into(),
+            input: vec![json!({"role":"user","content":"Explain this"})],
+            instructions: "Be clear".into(),
+            profile_id: None,
+            reasoning_effort: effort.map(str::to_owned),
+        }
+    }
+    #[test]
+    fn effort_is_forwarded_to_responses_and_default_is_omitted() {
+        let body = request_body(&example_request("chatgpt", Some("high"))).unwrap();
+        assert_eq!(body["reasoning"]["effort"], "high");
+        assert_eq!(body["store"], false);
+        assert_eq!(body["stream"], true);
+        assert!(request_body(&example_request("openai", None))
+            .unwrap()
+            .get("reasoning")
+            .is_none());
+        assert!(request_body(&example_request("compatible", None))
+            .unwrap()
+            .get("reasoning")
+            .is_none());
+        assert!(request_body(&example_request("compatible", Some("high"))).is_err());
+        assert!(request_body(&example_request("chatgpt", Some("injected"))).is_err());
+    }
+    #[test]
+    fn catalog_metadata_only_retains_supported_effort_values() {
+        let model = json!({"supported_reasoning_levels":[{"effort":"low","description":"Fast"},{"effort":"high"},{"effort":"unknown"}]});
+        assert_eq!(
+            reasoning_levels(&model),
+            Some(vec!["low".into(), "high".into()])
+        );
+        assert_eq!(reasoning_levels(&json!({})), None);
+    }
     #[test]
     fn split_unicode_and_crlf() {
         let mut p = Sse::new();

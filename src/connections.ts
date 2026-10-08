@@ -8,7 +8,7 @@ export const presets: { id: Preset; name: string; provider: ConnectionProfile['p
 ];
 export function newProfile(preset: Preset): ConnectionProfile { const p=presets.find(p=>p.id===preset)!;return {id:crypto.randomUUID(),name:p.name,preset:p.id,provider:p.provider,endpoint:p.endpoint,model:p.model}; }
 export function activeProfile(s: Settings): ConnectionProfile | undefined { return s.profiles?.find(p=>p.id===s.activeProfileId); }
-export function syncActive(s: Settings): Settings { const p=activeProfile(s);return p?{...s,provider:p.provider,endpoint:p.endpoint,model:p.model}:s; }
+export function syncActive(s: Settings): Settings { const p=activeProfile(s);return p?{...s,provider:p.provider,endpoint:p.endpoint,model:p.model,reasoningEffort:p.reasoningEffort}:s; }
 export function activateProfile(s: Settings,id: string): Settings { if(!s.profiles?.some(p=>p.id===id))return s;return syncActive({...s,activeProfileId:id}); }
 export function migrateConnections(s: Settings,legacyEndpoint?: string): Settings {
   if(s.profiles?.length)return syncActive(s);

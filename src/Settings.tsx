@@ -5,6 +5,7 @@ import * as bridge from './bridge';
 import { languages, resolveLanguage, type Language } from './i18n';
 import { useI18n } from './I18nProvider';
 import { activateProfile, friendlyError, migrateConnections, newProfile, presets, syncActive, usageUrl } from './connections';
+import { glowDefaults } from './composer-options';
 interface Props {
   value: Config;
   onChange: (s: Config) => void | Promise<void>;
@@ -141,6 +142,7 @@ export default function Settings({
   const ready = profile.provider === 'chatgpt' ? status?.connected && status.planUsage : status?.hasKey && status.endpointMatches;
   const stateText = !bridge.desktop ? 'Desktop connection' : !status ? 'Checking saved connection…' : profile.provider === 'chatgpt' ? status.connected ? status.planUsage ? status.refreshable ? 'Saved account · automatic renewal available' : 'Account connected · plan permission enabled' : 'Account connected · plan permission missing' : status.registered ? 'Saved registration · sign in to resume' : 'Not connected' : status.hasKey ? status.endpointMatches ? 'Key saved securely' : 'Address and saved key do not match' : 'No key saved';
   const externalUrl = usage?.url ?? usageUrl(profile);
+  const glow = {...glowDefaults, ...config.composerGlow};
   return <div className="modal-backdrop" onClick={e => {
     if (e.target === e.currentTarget && !busy) onClose();
   }}><section className="settings modal" role="dialog" aria-modal="true" aria-label={t("Settings")}>
@@ -198,7 +200,7 @@ export default function Settings({
     </>}
     <label>{t("Model")}<div className="model-row"><input aria-label={t("Model")} disabled={busy} value={profile.model} onChange={e => edit({
               model: e.target.value
-            })} placeholder={t("Load models or enter a model ID")} list="model-catalog" /><button disabled={busy || !bridge.desktop || !ready && !key.trim()} onClick={() => action(check)}>{t("Check & load models")}</button></div><datalist id="model-catalog">{catalog.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</datalist></label>
+            })} placeholder={t("Load models or enter a model ID")} list="model-catalog" /><button disabled={busy || !bridge.desktop || !ready && !key.trim()} onClick={() => action(check)}>{t("Refresh models")}</button></div><datalist id="model-catalog">{catalog.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</datalist></label>
     <p className={`small ${profile.checkState === 'error' ? 'error' : 'muted'}`}>{profile.checkMessage ? ui(profile.checkMessage) : t("Not yet tested. This check reads the model directory; it does not send a conversation or use generation quota.")}{profile.checkedAt && <> · {date(profile.checkedAt,true)}</>}</p>{profile.checkState === 'catalog' && <p className="small muted">{t("A model directory check does not confirm that every model can generate. Your first completed answer verifies that request.")}</p>}
     <h3>{t("Balance & allowance")}</h3>
     {usage?.kind === 'balance' ? <div className="balance-card">{usage.balances?.map(b => <div key={b.currency}><span>{t("Available balance")}</span><strong>{b.currency} {b.total}</strong></div>)}<p className="small muted">{usage.available ? t("Provider reports funds available.") : t("Provider reports no funds available for calls.")}{usage.checkedAt && <>{t('checkedTime',{time:date(usage.checkedAt,true)})}</>}{t("Balance is money, not a token estimate.")}</p></div> : <p className="small muted">{profile.provider === 'chatgpt' ? t("Remaining five-hour / weekly allowance is not available through this connection. View the official usage page.") : profile.preset === 'deepseek' ? t("Check the actual balance reported by DeepSeek. No test answer is generated.") : t("Remaining allowance is not queried by this build. Check the provider console for accurate usage and billing.")}</p>}
@@ -215,6 +217,8 @@ export default function Settings({
               ...c,
               fontSize: Number(e.target.value)
             }))}>{[13, 14, 15, 16, 17, 18].map(n => <option key={n} value={n}>{t('fontPixels',{count:n})}</option>)}</select></label></div>
+    <h3>{t('Input glow')}</h3><label className="switch-label"><input type="checkbox" checked={glow.enabled} onChange={e=>setConfig(c=>({...c,composerGlow:{...glow,enabled:e.target.checked}}))}/>{t('Animated input border')}<span className="small muted">{t('Appears while focused or generating. Reduced-motion settings disable rotation.')}</span></label>
+    <div className="settings-grid glow-settings">{(['colorA','colorB'] as const).map((key,index)=><label key={key}>{t(index?'Glow color 2':'Glow color 1')}<div className="glow-color"><input type="color" aria-label={t(index?'Glow color 2':'Glow color 1')} value={glow[key]} onInput={e=>setConfig(c=>({...c,composerGlow:{...glow,[key]:(e.target as HTMLInputElement).value}}))}/><span>{glow[key].toUpperCase()}</span></div></label>)}<label>{t('Glow brightness')}<input aria-label={t('Glow brightness')} type="range" min="0" max="100" value={glow.brightness} onChange={e=>setConfig(c=>({...c,composerGlow:{...glow,brightness:Number(e.target.value)}}))}/><span>{n(glow.brightness)}%</span></label><label>{t('Glow cycle')}<input aria-label={t('Glow cycle')} type="range" min="2" max="20" value={glow.seconds} onChange={e=>setConfig(c=>({...c,composerGlow:{...glow,seconds:Number(e.target.value)}}))}/><span>{t('glowSeconds',{count:n(glow.seconds)})}</span></label></div><p className="small muted">{t('Use the color picker to set RGB colors. Both colors are saved on this device.')}</p>
     <label className="switch-label"><input type="checkbox" checked={config.annotations} onChange={e => setConfig(c => ({
             ...c,
             annotations: e.target.checked
@@ -223,7 +227,7 @@ export default function Settings({
             ...c,
             contextBudget: Number(e.target.value)
           }))}>{[16000, 48000, 96000, 192000].map(count => <option key={count} value={count}>{t('characterCount',{count:n(count)})}</option>)}</select><span className="small muted">{t("A local character budget, not an exact token limit. Older content may be abbreviated; originals remain saved.")}</span></label>
-    </div><footer><span className="small muted">ChatNote · 0.3.1</span><button className="primary" disabled={busy || config.profiles!.some(p => !p.name.trim())} onClick={() => action(async () => {
+    </div><footer><span className="small muted">ChatNote · 0.4.0</span><button className="primary" disabled={busy || config.profiles!.some(p => !p.name.trim())} onClick={() => action(async () => {
           await saveKey();
           await onChange(syncActive(config));
           onClose();

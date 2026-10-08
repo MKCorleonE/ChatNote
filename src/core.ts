@@ -1,6 +1,7 @@
 import type { Anchor, Branch, ContextItem, ContextReport, Message, Session, Workspace } from './types';
 import { migrateConnections } from './connections';
 import { resolveLanguage, translator, type Language } from './i18n';
+import { efforts } from './composer-options';
 export const uid = () => crypto.randomUUID();
 export const defaultSettings = { provider: 'openai' as const, endpoint: 'https://api.openai.com/v1', model: '', language:'en' as Language, fontSize: 15, annotations: true, theme: 'dark' as const, contextBudget: 48000 };
 export function newSession(title = 'New conversation'): Session { const now = Date.now(); return { id: uid(), title, createdAt: now, updatedAt: now, messages: [], branches: [], view: { mode: 'closed', branchId: null, drafts: {}, positions: {}, collapsed: [] } }; }
@@ -39,6 +40,12 @@ export function validateWorkspace(data: unknown): asserts data is Workspace {
   const w = data as Workspace;
   if (!w || w.version !== 1 || !Array.isArray(w.sessions) || w.sessions.length === 0 || w.sessions.length > 2000) throw new Error('This file is not a supported ChatNote backup.');
   if(w.settings?.language!==undefined && typeof w.settings.language!=='string') throw new Error('Invalid settings.');
+  if(w.settings?.panelWidth!==undefined && (!Number.isFinite(w.settings.panelWidth)||w.settings.panelWidth<300||w.settings.panelWidth>760))throw new Error('Invalid panel width.');
+  const glow=w.settings?.composerGlow;
+  if(glow && (typeof glow.enabled!=='boolean'||!/^#[0-9a-f]{6}$/i.test(glow.colorA)||!/^#[0-9a-f]{6}$/i.test(glow.colorB)||!Number.isFinite(glow.seconds)||glow.seconds<2||glow.seconds>20||!Number.isFinite(glow.brightness)||glow.brightness<0||glow.brightness>100))throw new Error('Invalid input glow.');
+  for(const p of w.settings?.profiles??[])if(p.reasoningEffort!==undefined&&!efforts.includes(p.reasoningEffort))throw new Error('Invalid reasoning effort.');
+  const catalogs=w.settings?.modelCatalogs;
+  if(catalogs){if(typeof catalogs!=='object'||Array.isArray(catalogs)||Object.keys(catalogs).length>50)throw new Error('Invalid model catalogs.');for(const c of Object.values(catalogs)){if(!c||!['openai','chatgpt','compatible'].includes(c.provider)||typeof c.endpoint!=='string'||!Number.isFinite(c.updatedAt)||!Array.isArray(c.models)||c.models.length>1000||c.models.some(m=>!m||typeof m.id!=='string'||typeof m.name!=='string'||(m.reasoningEfforts!==undefined&&(!Array.isArray(m.reasoningEfforts)||m.reasoningEfforts.some(e=>!efforts.includes(e))))))throw new Error('Invalid model catalog.');}}
   const all = new Set<string>();
   for (const s of w.sessions) {
     if (!s || typeof s.id !== 'string' || all.has(s.id) || typeof s.title !== 'string' || !Array.isArray(s.messages) || !Array.isArray(s.branches)) throw new Error('Invalid or duplicate conversation.'); all.add(s.id);

@@ -68,4 +68,36 @@ test('Conversation history opens on demand and closes after selection; drafts pe
 test('Aborting generation preserves the pending question and marks the partial answer stopped',async()=>{store.slow=true;const user=userEvent.setup();render(<App/>);await screen.findByText('Three representations, three roles');await user.type(screen.getByRole('textbox',{name:'Message the main conversation'}),'Continue the lesson');await user.click(screen.getByRole('button',{name:'Send main message'}));await screen.findAllByRole('button',{name:'Stop generation'});await user.click(screen.getAllByRole('button',{name:'Stop generation'})[0]);await screen.findByText('Stopped · partial answer saved');await waitFor(()=>{const m=store.saved?.sessions[0].messages.at(-1);expect(m?.status).toBe('stopped');});expect(screen.getByText('Continue the lesson')).toBeDefined();});
 test('A failed load cannot silently overwrite existing records',async()=>{const bridge=await import('./bridge');const spy=vi.spyOn(bridge,'loadWorkspace').mockRejectedValueOnce(new Error('Database corrupt'));render(<App/>);await screen.findByText('Error: Database corrupt');await new Promise(r=>setTimeout(r,400));expect(store.saved).toBeNull();spy.mockRestore();});
 
+test('Models load automatically in the composer and Alt+Enter / IME do not send; Enter sends the chosen effort',async()=>{
+  const bridge=await import('./bridge'),spy=vi.spyOn(bridge,'models').mockResolvedValue([{id:'gpt-6.1-sol',name:'GPT-6.1 Sol'},{id:'gpt-5.6-sol',name:'GPT-5.6 Sol'}]);
+  const w=store.initial!;w.settings.profiles!.find(p=>p.id===w.settings.activeProfileId)!.model='gpt-6.1-sol';
+  const user=userEvent.setup();render(<App/>);await screen.findByText('Three representations, three roles');
+  await waitFor(()=>expect(spy).toHaveBeenCalledTimes(1));expect(store.requests).toHaveLength(0);
+  await user.click(screen.getAllByRole('button',{name:'Choose model'})[0]);await user.click(await screen.findByRole('button',{name:/GPT-5.6 Sol/}));
+  await user.selectOptions(screen.getAllByRole('combobox',{name:'Reasoning effort'})[0],'high');
+  const editor=screen.getByRole('textbox',{name:'Message the main conversation'});await user.type(editor,'First line');await user.keyboard('{Alt>}{Enter}{/Alt}Second line');
+  expect((editor as HTMLTextAreaElement).value).toBe('First line\nSecond line');expect(store.requests).toHaveLength(0);
+  fireEvent.keyDown(editor,{key:'Enter',isComposing:true,keyCode:229});expect(store.requests).toHaveLength(0);
+  fireEvent.keyDown(editor,{key:'Enter'});await screen.findByText(/We keep context separate/);
+  expect(store.requests).toHaveLength(1);expect(store.requests[0].model).toBe('gpt-5.6-sol');expect(store.requests[0].reasoningEffort).toBe('high');expect(store.requests[0].input.at(-1)?.content).toBe('First line\nSecond line');
+  await waitFor(()=>expect(store.saved?.sessions[0].messages.at(-1)?.reasoningEffort).toBe('high'));spy.mockRestore();
+});
+
+test('A failed catalog refresh keeps the cached models, selected model and unsent draft',async()=>{
+  const bridge=await import('./bridge'),spy=vi.spyOn(bridge,'models').mockRejectedValue('Could not connect to the model provider');
+  const w=store.initial!,p=w.settings.profiles!.find(p=>p.id===w.settings.activeProfileId)!;p.model='gpt-6.1-sol';
+  w.settings.modelCatalogs={[p.id]:{provider:p.provider,endpoint:p.endpoint,models:[{id:p.model,name:'Saved Sol'}],updatedAt:1}};w.sessions[0].view.drafts.main='Keep my draft';
+  const user=userEvent.setup();render(<App/>);await screen.findByText('Three representations, three roles');await user.click(screen.getAllByRole('button',{name:'Choose model'})[0]);
+  await screen.findByRole('alert');expect(screen.getByRole('button',{name:/Saved Sol/})).toBeDefined();expect((screen.getByRole('textbox',{name:'Message the main conversation'})as HTMLTextAreaElement).value).toBe('Keep my draft');
+  await waitFor(()=>expect(store.saved?.settings.model).toBe(p.model));expect(store.requests).toHaveLength(0);spy.mockRestore();
+});
+
+test('Panel width persists across restart and viewport constraints preserve the saved preference',async()=>{
+  store.initial!.settings.panelWidth=400;const view=render(<App/>);await screen.findByText('Three representations, three roles');
+  fireEvent.keyDown(screen.getByRole('separator',{name:'Resize annotation panel'}),{key:'ArrowLeft'});
+  await waitFor(()=>expect(store.saved?.settings.panelWidth).toBe(424));const saved=structuredClone(store.saved!);view.unmount();store.initial=saved;
+  render(<App/>);await screen.findByRole('separator',{name:'Resize annotation panel'});expect(screen.getByRole('separator').getAttribute('aria-valuenow')).toBe('424');
+  fireEvent.doubleClick(screen.getByRole('separator'));await waitFor(()=>expect(store.saved?.settings.panelWidth).toBe(370));expect(store.requests).toHaveLength(0);
+});
+
 
