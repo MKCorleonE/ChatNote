@@ -6,4 +6,5 @@ import './styles.css';
 import './composer.css';
 import './message-bubbles.css';
 import './navigation.css';
+import './appearance.css';
 createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);

@@ -33,3 +33,22 @@ export function selectedSource(range: Range, root: HTMLElement): {start:number;e
   const start=boundary(range.startContainer,range.startOffset,false),end=boundary(range.endContainer,range.endOffset,true);
   return start===null||end===null||!Number.isFinite(start)||!Number.isFinite(end)||end<=start?null:{start,end};
 }
+
+// Build a DOM range from persisted source offsets, including escaped Markdown and math.
+export function sourceRange(root:HTMLElement, start:number, end:number):Range|null {
+  const leaves=[...root.querySelectorAll<HTMLElement>('[data-source-start]')].filter(el=>Number(el.dataset.sourceStart)<end&&Number(el.dataset.sourceEnd)>start);
+  if(!leaves.length)return null;
+  const range=document.createRange();
+  const boundary=(leaf:HTMLElement, offset:number, last:boolean)=>{
+    if(leaf.dataset.sourceAtomic){if(last)range.setEndAfter(leaf);else range.setStartBefore(leaf);return;}
+    const map=leaf.dataset.sourceMap?.split(',').map(Number);
+    const index=map?(last?map.reduce((found,n,i)=>n<=offset?i:found,0):map.findIndex(n=>n>=offset)):offset-Number(leaf.dataset.sourceStart);
+    const node=leaf.firstChild;
+    // Source spans can contain a mark and its tooltip. Use the rendered text only.
+    const text=node?.nodeType===Node.TEXT_NODE?node:leaf.querySelector('mark')?.firstChild;
+    if(text?.nodeType===Node.TEXT_NODE){const pos=Math.max(0,Math.min(text.textContent?.length??0,index));if(last)range.setEnd(text,pos);else range.setStart(text,pos);}
+    else if(last)range.setEndAfter(leaf);else range.setStartBefore(leaf);
+  };
+  boundary(leaves[0],start,false);boundary(leaves.at(-1)!,end,true);
+  return range;
+}

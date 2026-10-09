@@ -1,6 +1,7 @@
 import type { Anchor, Branch, ContextItem, ContextReport, Message, Session, Workspace } from './types';
 import { migrateConnections } from './connections';
 import { resolveLanguage, translator, type Language } from './i18n';
+import { highlighterColors } from './annotation-style';
 import { efforts } from './composer-options';
 import { activeMessages, sessionMessages, threadMessages, threadPaths } from './message-history';
 export const uid = () => crypto.randomUUID();
@@ -44,6 +45,8 @@ export function validateWorkspace(data: unknown): asserts data is Workspace {
   if(w.settings?.language!==undefined && typeof w.settings.language!=='string') throw new Error('Invalid settings.');
   if(w.settings?.historyPinned!==undefined&&typeof w.settings.historyPinned!=='boolean')throw new Error('Invalid settings.');
   if(w.settings?.panelWidth!==undefined && (!Number.isFinite(w.settings.panelWidth)||w.settings.panelWidth<300||w.settings.panelWidth>760))throw new Error('Invalid panel width.');
+  const highlight=w.settings?.annotationHighlight;
+  if(highlight&&(!highlighterColors.some(c=>c.id===highlight.color)||!Number.isFinite(highlight.opacity)||highlight.opacity<0||highlight.opacity>100))throw new Error('Invalid annotation highlight.');
   const glow=w.settings?.composerGlow;
   if(glow && (typeof glow.enabled!=='boolean'||!/^#[0-9a-f]{6}$/i.test(glow.colorA)||!/^#[0-9a-f]{6}$/i.test(glow.colorB)||!Number.isFinite(glow.seconds)||glow.seconds<2||glow.seconds>20||!Number.isFinite(glow.brightness)||glow.brightness<0||glow.brightness>100))throw new Error('Invalid input glow.');
   for(const p of w.settings?.profiles??[])if(p.reasoningEffort!==undefined&&!efforts.includes(p.reasoningEffort))throw new Error('Invalid reasoning effort.');

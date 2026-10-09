@@ -1,5 +1,20 @@
 import { newSession } from './core';
 import type { Session, Workspace } from './types';
+import { threadPaths } from './message-history';
+
+export function answerTurnIds(session:Session, messageId:string):Set<string> {
+  const thread=[session,...session.branches].find(t=>t.messages.some(m=>m.id===messageId&&m.role==='assistant'));
+  const ids=new Set([messageId]);
+  if(!thread)return ids;
+  for(const path of threadPaths(thread)) {
+    const index=path.findIndex(m=>m.id===messageId);if(index<0)continue;
+    let start=index;while(start>0&&path[start].role!=='user')start--;
+    if(path[start].role!=='user')start=index;
+    let end=index+1;while(end<path.length&&path[end].role!=='user')end++;
+    for(const m of path.slice(start,end))ids.add(m.id);
+  }
+  return ids;
+}
 
 export function hasConversation(session:Session):boolean {
   return session.messages.length>0||session.branches.length>0||!!session.messageHistory?.some(path=>path.length>0);
@@ -13,7 +28,8 @@ export function startConversation(workspace:Workspace,title:string):Workspace {
 }
 
 export function affectedBranches(session:Session, messageId:string):Set<string> {
-  const removed=new Set(session.branches.filter(b=>b.anchor.messageId===messageId).map(b=>b.id));
+  const turn=answerTurnIds(session,messageId);
+  const removed=new Set(session.branches.filter(b=>turn.has(b.anchor.messageId)).map(b=>b.id));
   let changed=true;
   while(changed){changed=false;for(const b of session.branches)if(b.parentId&&removed.has(b.parentId)&&!removed.has(b.id)){removed.add(b.id);changed=true;}}
   return removed;
@@ -22,8 +38,8 @@ export function deleteAnswer(session:Session, messageId:string):Session {
   const answer=[...session.messages,...session.branches.flatMap(b=>b.messages)].find(m=>m.id===messageId&&m.role==='assistant');
   if(!answer)return session;
   const removed=affectedBranches(session,messageId);
-  const removedMessages=new Set([messageId,...session.branches.filter(b=>removed.has(b.id)).flatMap(b=>b.messages.map(m=>m.id))]);
-  if(answer.status==='streaming'||session.branches.some(b=>removed.has(b.id)&&b.messages.some(m=>m.status==='streaming')))throw new Error('Stop generation before deleting.');
+  const removedMessages=new Set([...answerTurnIds(session,messageId),...session.branches.filter(b=>removed.has(b.id)).flatMap(b=>b.messages.map(m=>m.id))]);
+  if([session,...session.branches].some(t=>t.messages.some(m=>removedMessages.has(m.id)&&m.status==='streaming')))throw new Error('Stop generation before deleting.');
   const strip=<T extends Pick<Session,'messages'|'activeMessageIds'|'messageHistory'>>(thread:T):T=>{
     const messages=thread.messages.filter(m=>!removedMessages.has(m.id));
     const active=thread.activeMessageIds?.filter(id=>!removedMessages.has(id));
