@@ -1,14 +1,14 @@
 import { useLayoutEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Copy, Pencil } from 'lucide-react';
 import { useI18n } from './I18nProvider';
-import { questionTime } from './message-history';
+import { MessageTime } from './MessageTime';
 import type { Message } from './types';
 
-export function QuestionBubble({ message, editing, draft, disabled, version, count, onCopy, onEdit, onDraft, onCancel, onGenerate, onVersion }: {
-  message: Message; editing: boolean; draft: string; disabled: boolean; version: number; count: number;
+export function QuestionBubble({ message, now, editing, draft, disabled, version, count, onCopy, onEdit, onDraft, onCancel, onGenerate, onVersion }: {
+  message: Message; now: number; editing: boolean; draft: string; disabled: boolean; version: number; count: number;
   onCopy: () => void; onEdit: () => void; onDraft: (text: string) => void; onCancel: () => void; onGenerate: () => void; onVersion: (index: number) => void;
 }) {
-  const { t, date } = useI18n();
+  const { t } = useI18n();
   const input = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => { if (editing) input.current?.focus(); }, [editing]);
   useLayoutEffect(() => { if (input.current) { input.current.style.height = 'auto'; input.current.style.height = `${Math.max(64, Math.min(280, input.current.scrollHeight))}px`; } }, [draft, editing]);
@@ -22,7 +22,7 @@ export function QuestionBubble({ message, editing, draft, disabled, version, cou
       <button className="icon-button" aria-label={t('Copy question')} title={t('Copy question')} onClick={onCopy}><Copy size={15} /></button>
       <button className="icon-button" aria-label={t('Edit question')} title={t('Edit question')} disabled={disabled || editing} onClick={onEdit}><Pencil size={15} /></button>
       {count > 1 && <span className="question-versions"><button className="icon-button" aria-label={t('Previous question version')} title={t('Previous question version')} disabled={disabled || editing || version === 0} onClick={() => onVersion(version - 1)}><ChevronLeft size={14} /></button><span aria-live="polite">{t('questionVersion', { current: String(version + 1), total: String(count) })}</span><button className="icon-button" aria-label={t('Next question version')} title={t('Next question version')} disabled={disabled || editing || version === count - 1} onClick={() => onVersion(version + 1)}><ChevronRight size={14} /></button></span>}
-      {questionTime(message.createdAt) && <time dateTime={new Date(message.createdAt).toISOString()} title={date(message.createdAt, true)}>{questionTime(message.createdAt)}</time>}
+      <MessageTime timestamp={message.createdAt} now={now}/>
     </div>
   </>;
 }

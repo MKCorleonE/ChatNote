@@ -10,6 +10,17 @@ import App from './App';
 vi.mock('@tauri-apps/api/window',()=>({getCurrentWindow:()=>({onCloseRequested:async()=>()=>{},destroy:async()=>{}})}));
 beforeEach(()=>{const w=emptyWorkspace(),s=exampleSession();w.sessions=[s];w.activeId=s.id;w.settings.model='test-model';w.settings.profiles!.find(p=>p.id===w.settings.activeProfileId)!.model='test-model';store.initial=w;store.saved=null;store.requests=[];store.slow=false;window.getSelection()?.removeAllRanges();});
 
+test('Completed answers have only icon copy/context actions and a timestamp, with no completion/duration/count labels',async()=>{
+  const s=store.initial!.sessions[0],answer=s.messages[1];answer.context=contextFor(s,null);answer.completedAt=Date.now();
+  const original=structuredClone(s),user=userEvent.setup();render(<App/>);await screen.findByText('Three representations, three roles');
+  expect(document.querySelectorAll('.answer-status')).toHaveLength(0);expect(screen.queryByText('Answer complete')).toBeNull();
+  const article=document.querySelector('.main-scroll .message.assistant')! as HTMLElement;
+  const context=within(article).getByRole('button',{name:'View context'});expect(context.textContent).toBe('');expect(context.querySelector('svg')).not.toBeNull();
+  expect(article.querySelector('.answer-time')?.getAttribute('datetime')).toBe(new Date(answer.completedAt).toISOString());
+  await user.click(context);await screen.findByRole('dialog',{name:'Context details'});expect(store.requests).toHaveLength(0);
+  await waitFor(()=>expect(store.saved?.sessions[0].messages).toEqual(original.messages));
+});
+
 test('Question actions copy exact text, show HH:mm and edit/cancel without a request; answer copying is an icon',async()=>{
   const user=userEvent.setup();render(<App/>);await screen.findByText('Three representations, three roles');
   const original=store.initial!.sessions[0].messages[0];
