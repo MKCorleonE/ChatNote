@@ -6,6 +6,8 @@ import { supportedEfforts } from './composer-options';
 import * as bridge from './bridge';
 import type { ConnectionProfile, Model, ProfileStatus, ReasoningEffort, Settings } from './types';
 import type { friendlyError } from './connections';
+import { ChoiceMenu } from './ChoiceMenu';
+import { usePresence } from './usePresence';
 
 interface Props {
   settings: Settings; catalog: Model[]; status: ProfileStatus | null; loading: boolean;
@@ -17,10 +19,11 @@ interface Props {
 export function ModelControls(props: Props) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false), [query, setQuery] = useState(''), [custom, setCustom] = useState('');
+  const menuPresence=usePresence(open);
   const root = useRef<HTMLDivElement>(null), search = useRef<HTMLInputElement>(null);
   const profile = activeProfile(props.settings)!;
   const options = supportedEfforts(profile.provider, profile.model, props.catalog);
-  const chosen = options.includes(profile.reasoningEffort!) ? profile.reasoningEffort : '';
+  const chosen = options.includes(profile.reasoningEffort!) ? profile.reasoningEffort??'' : '';
   const modelName = props.catalog.find(m => m.id === profile.model)?.name ?? profile.model;
   useEffect(() => {
     if (!open) return;
@@ -40,15 +43,10 @@ export function ModelControls(props: Props) {
       {props.loading ? <LoaderCircle size={13} className="spin" /> : <span className={`status-dot ${ready ? '' : 'neutral'}`} />}
       <span>{modelName || t('Choose model')}</span><ChevronDown size={12} />
     </button>
-    <label className="effort-control" title={options.length ? t('Higher effort can use more time and allowance.') : t('This model uses its provider default.')}>
-      <span className="sr-only">{t('Reasoning effort')}</span>
-      <select aria-label={t('Reasoning effort')} disabled={props.disabled || !options.length} value={chosen} onChange={e => props.onEffort((e.target.value || undefined) as ReasoningEffort | undefined)}>
-        <option value="">{t('Provider default')}</option>{options.map(e => <option key={e} value={e}>{t(`effort.${e}`)}</option>)}
-      </select>
-    </label>
-    {open && <section className="model-menu" role="dialog" aria-label={t('Choose model')}>
+    <ChoiceMenu label={t('Reasoning effort')} title={options.length ? t('Higher effort can use more time and allowance.') : t('This model uses its provider default.')} disabled={props.disabled||!options.length} value={chosen} options={[{value:'',label:t('Provider default')},...options.map(e=>({value:e,label:t(`effort.${e}`)}))]} onChange={value=>props.onEffort((value||undefined) as ReasoningEffort|undefined)}/>
+    {menuPresence.rendered && <section className={`model-menu ${menuPresence.leaving?'leaving':''}`} inert={menuPresence.leaving} aria-hidden={menuPresence.leaving} role="dialog" aria-label={t('Choose model')}>
       <header><span>{t('Model & connection')}</span><button type="button" className="icon-button" disabled={props.loading} onClick={props.onRefresh} aria-label={t('Refresh models')}><RefreshCw size={14} /></button></header>
-      <label className="connection-control">{t('Active connection')}<select aria-label={t('Active connection')} value={profile.id} onChange={e => props.onProfile(e.target.value)}>{props.settings.profiles?.map((p: ConnectionProfile) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+      <div className="connection-control"><span>{t('Active connection')}</span><ChoiceMenu label={t('Active connection')} value={profile.id} placement="below" options={props.settings.profiles!.map((p:ConnectionProfile)=>({value:p.id,label:p.name}))} onChange={props.onProfile}/></div>
       <div className="model-search"><Search size={14} /><input ref={search} aria-label={t('Search models')} placeholder={t('Search models')} value={query} onChange={e => setQuery(e.target.value)} /></div>
       {props.loading && <p className="small muted" role="status">{t('Loading models…')}</p>}
       {props.error && <p className="model-error" role="alert">{t(props.error.title)} · {t('Your selected model is kept. Try refreshing or open connection settings.')}</p>}

@@ -42,6 +42,7 @@ export function validateWorkspace(data: unknown): asserts data is Workspace {
   const w = data as Workspace;
   if (!w || w.version !== 1 || !Array.isArray(w.sessions) || w.sessions.length === 0 || w.sessions.length > 2000) throw new Error('This file is not a supported ChatNote backup.');
   if(w.settings?.language!==undefined && typeof w.settings.language!=='string') throw new Error('Invalid settings.');
+  if(w.settings?.historyPinned!==undefined&&typeof w.settings.historyPinned!=='boolean')throw new Error('Invalid settings.');
   if(w.settings?.panelWidth!==undefined && (!Number.isFinite(w.settings.panelWidth)||w.settings.panelWidth<300||w.settings.panelWidth>760))throw new Error('Invalid panel width.');
   const glow=w.settings?.composerGlow;
   if(glow && (typeof glow.enabled!=='boolean'||!/^#[0-9a-f]{6}$/i.test(glow.colorA)||!/^#[0-9a-f]{6}$/i.test(glow.colorB)||!Number.isFinite(glow.seconds)||glow.seconds<2||glow.seconds>20||!Number.isFinite(glow.brightness)||glow.brightness<0||glow.brightness>100))throw new Error('Invalid input glow.');
