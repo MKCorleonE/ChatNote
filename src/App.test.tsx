@@ -1,13 +1,91 @@
 import { vi, test, expect, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { emptyWorkspace, exampleSession, message, contextFor } from './core';
+import { emptyWorkspace, exampleSession, message, contextFor, validAnchor, validateWorkspace } from './core';
 import type { Generation, StreamEvent, Workspace } from './types';
+import { activeMessages } from './message-history';
 const store=vi.hoisted(()=>({initial:null as Workspace|null,saved:null as Workspace|null,requests:[] as Generation[],slow:false}));
 vi.mock('./bridge',()=>({desktop:true,loadWorkspace:async()=>structuredClone(store.initial),saveWorkspace:async(w:Workspace)=>{store.saved=structuredClone(w);},profileStatus:async()=>({connected:true,planUsage:true,hasKey:true,endpointMatches:true}),openUrl:async()=>{},connection:async()=>({apiKey:true,compatibleKey:false,chatgpt:false}),models:async()=>[{id:'test-model',name:'Test model'}],setKey:async()=>{},signIn:async()=>({chatgpt:true}),signOut:async()=>{},saveFile:async()=>true,generate:async(req:Generation,onEvent:(e:StreamEvent)=>void,signal:AbortSignal)=>{store.requests.push(req);if(store.slow){await new Promise<void>((resolve,reject)=>{const timer=setTimeout(resolve,2000);signal.addEventListener('abort',()=>{clearTimeout(timer);reject(new Error('aborted'));},{once:true});});}onEvent({type:'delta',text:'A branch can explain this detail. '});await new Promise(r=>setTimeout(r,10));onEvent({type:'delta',text:'We keep context separate.'});onEvent({type:'done'});}}));
 import App from './App';
 vi.mock('@tauri-apps/api/window',()=>({getCurrentWindow:()=>({onCloseRequested:async()=>()=>{},destroy:async()=>{}})}));
 beforeEach(()=>{const w=emptyWorkspace(),s=exampleSession();w.sessions=[s];w.activeId=s.id;w.settings.model='test-model';w.settings.profiles!.find(p=>p.id===w.settings.activeProfileId)!.model='test-model';store.initial=w;store.saved=null;store.requests=[];store.slow=false;window.getSelection()?.removeAllRanges();});
+
+test('Question actions copy exact text, show HH:mm and edit/cancel without a request; answer copying is an icon',async()=>{
+  const user=userEvent.setup();render(<App/>);await screen.findByText('Three representations, three roles');
+  const original=store.initial!.sessions[0].messages[0];
+  const question=document.querySelector('.main-scroll .message.user')! as HTMLElement;
+  const write=vi.spyOn(navigator.clipboard,'writeText').mockResolvedValue();
+  expect(question.querySelector('.message-meta')).toBeNull();expect(question.querySelector('time')?.textContent).toMatch(/^\d{2}:\d{2}$/);
+  expect(document.querySelectorAll('.message .model-label')).toHaveLength(0);
+  await user.click(within(question).getByRole('button',{name:'Copy question'}));expect(write).toHaveBeenCalledWith(original.text);
+  const answerCopy=document.querySelector('.main-scroll .answer-copy')! as HTMLElement;
+  expect(answerCopy.textContent).toBe('');expect(answerCopy.querySelector('svg')).not.toBeNull();
+  await user.click(answerCopy);expect(write).toHaveBeenCalledWith(store.initial!.sessions[0].messages[1].text);
+  await user.click(within(question).getByRole('button',{name:'Edit question'}));
+  const edit=screen.getByRole('textbox',{name:'Question text'});expect(document.activeElement).toBe(edit);
+  await user.clear(edit);expect(screen.getByRole('button',{name:'Save & regenerate'}).hasAttribute('disabled')).toBe(true);
+  await user.type(edit,'Do not send yet');await user.click(screen.getByRole('button',{name:'Cancel editing'}));
+  expect(store.requests).toHaveLength(0);expect(question.querySelector('.user-text')?.textContent).toBe(original.text);write.mockRestore();
+});
+
+test('Editing an earlier main question regenerates with its prefix, preserves draft and anchors, and can restore the old version',async()=>{
+  const s=store.initial!.sessions[0],original=structuredClone(s);s.messages.push(message('user','UNRELATED_LATER_QUESTION'),message('assistant','UNRELATED_LATER_ANSWER'));
+  s.view.drafts.main='Keep my composer draft';const user=userEvent.setup();render(<App/>);await screen.findByText('Three representations, three roles');
+  await user.click(within(document.querySelector('.main-scroll .message.user')! as HTMLElement).getByRole('button',{name:'Edit question'}));
+  const edit=screen.getByRole('textbox',{name:'Question text'});await user.clear(edit);await user.type(edit,'Edited question 中文🧠');
+  await user.click(screen.getByRole('button',{name:'Save & regenerate'}));await screen.findByText(/We keep context separate/);
+  expect(store.requests).toHaveLength(1);expect(store.requests[0].input).toEqual([{role:'user',content:'Edited question 中文🧠'}]);
+  await waitFor(()=>expect(store.saved?.sessions[0].messages.at(-1)?.status).toBe('complete'));
+  const saved=store.saved!;expect(activeMessages(saved.sessions[0])).toHaveLength(2);expect(saved.sessions[0].messages).toHaveLength(6);expect(saved.sessions[0].messageHistory![0]).toHaveLength(4);
+  expect(validAnchor(saved.sessions[0],original.branches[0].anchor)).toBe(true);expect(()=>validateWorkspace(saved)).not.toThrow();
+  expect((screen.getByRole('textbox',{name:'Message the main conversation'})as HTMLTextAreaElement).value).toBe('Keep my composer draft');
+  await user.click(screen.getByRole('button',{name:'Previous question version'}));await screen.findByText('Three representations, three roles');
+  await user.click(screen.getByRole('button',{name:'Next question version'}));await screen.findByText('Edited question 中文🧠');
+  await user.click(screen.getByRole('button',{name:'Jump to source'}));await screen.findByText('Three representations, three roles');
+  expect(store.requests).toHaveLength(1);
+});
+
+test('Editing annotation questions keeps the main thread and sibling context unchanged',async()=>{
+  const original=structuredClone(store.initial!.sessions[0]);const user=userEvent.setup();render(<App/>);await screen.findByText('Three representations, three roles');
+  const question=document.querySelector('.panel-scroll .message.user')! as HTMLElement;
+  await user.click(within(question).getByRole('button',{name:'Edit question'}));const edit=screen.getByRole('textbox',{name:'Question text'});await user.clear(edit);await user.type(edit,'New annotation question');
+  await user.click(screen.getByRole('button',{name:'Save & regenerate'}));await screen.findByText(/We keep context separate/);
+  await waitFor(()=>expect(store.saved?.sessions[0].branches[0].messages.at(-1)?.status).toBe('complete'));
+  expect(store.saved!.sessions[0].messages).toEqual(original.messages);expect(store.saved!.sessions[0].branches[0].messageHistory?.[0]).toEqual(original.branches[0].messages);
+  expect(store.requests[0].input.at(-1)?.content).toBe('New annotation question');expect(store.requests[0].input.some(i=>i.content===original.branches[0].messages[0].text)).toBe(false);
+});
+
+test('An edited over-budget question keeps the original transcript until context is reviewed and sent',async()=>{
+  const w=store.initial!,s=w.sessions[0];s.messages=[message('user','Old question'),message('assistant','Long old explanation '.repeat(1000)),message('user','Question to edit'),message('assistant','Old answer')];s.branches=[];s.view.mode='closed';s.view.branchId=null;w.settings.contextBudget=8000;
+  const user=userEvent.setup();render(<App/>);await screen.findByText('Question to edit');
+  const question=document.querySelectorAll('.main-scroll .message.user')[1] as HTMLElement;await user.click(within(question).getByRole('button',{name:'Edit question'}));
+  const edit=screen.getByRole('textbox',{name:'Question text'});await user.clear(edit);await user.type(edit,'Revised latest question');await user.click(screen.getByRole('button',{name:'Save & regenerate'}));
+  await screen.findByRole('button',{name:'Send with this context'});expect(store.requests).toHaveLength(0);expect(screen.getByText('Old answer')).toBeDefined();
+  await user.click(screen.getByRole('button',{name:'Keep editing'}));expect((screen.getByRole('textbox',{name:'Question text'})as HTMLTextAreaElement).value).toBe('Revised latest question');
+  await user.click(screen.getByRole('button',{name:'Save & regenerate'}));await user.click(await screen.findByRole('button',{name:'Send with this context'}));await screen.findByText(/We keep context separate/);
+  expect(store.requests).toHaveLength(1);expect(store.requests[0].input.at(-1)?.content).toBe('Revised latest question');expect(JSON.stringify(store.requests[0].input)).not.toContain('Old answer');
+});
+
+test('Question editing drafts survive language switching and failed clipboard access is reported',async()=>{
+  const user=userEvent.setup();render(<App/>);await screen.findByText('Three representations, three roles');
+  const write=vi.spyOn(navigator.clipboard,'writeText').mockRejectedValue(new Error('Denied'));
+  const question=document.querySelector('.main-scroll .message.user')! as HTMLElement;await user.click(within(question).getByRole('button',{name:'Copy question'}));await screen.findByText('Copy failed. Select the text and copy it manually.');write.mockRestore();
+  await user.click(within(question).getByRole('button',{name:'Edit question'}));const edit=screen.getByRole('textbox',{name:'Question text'});await user.clear(edit);await user.type(edit,'Preserve 编辑草稿');
+  await user.click(screen.getByRole('button',{name:'Open settings'}));await user.click(screen.getByRole('button',{name:'Appearance'}));await user.selectOptions(screen.getByLabelText('Interface language'),'zh-Hans');await user.click(screen.getByRole('button',{name:'关闭设置'}));
+  expect((screen.getByRole('textbox',{name:'问题内容'})as HTMLTextAreaElement).value).toBe('Preserve 编辑草稿');expect(store.requests).toHaveLength(0);
+});
+
+test('Stopping an edited generation keeps both versions and disables editing while streaming',async()=>{
+  store.slow=true;const original=structuredClone(store.initial!.sessions[0]),user=userEvent.setup();render(<App/>);await screen.findByText('Three representations, three roles');
+  await user.click(within(document.querySelector('.main-scroll .message.user')! as HTMLElement).getByRole('button',{name:'Edit question'}));
+  const edit=screen.getByRole('textbox',{name:'Question text'});await user.clear(edit);await user.type(edit,'Edited question to stop');await user.click(screen.getByRole('button',{name:'Save & regenerate'}));
+  await screen.findAllByRole('button',{name:'Stop generation'});expect(screen.getByRole('button',{name:'Previous question version'}).hasAttribute('disabled')).toBe(true);
+  expect(screen.getAllByRole('button',{name:'Edit question'}).every(button=>button.hasAttribute('disabled'))).toBe(true);
+  await user.click(screen.getAllByRole('button',{name:'Stop generation'})[0]);await screen.findByText('Stopped · partial answer saved');
+  await waitFor(()=>expect(activeMessages(store.saved!.sessions[0]).at(-1)?.status).toBe('stopped'));
+  expect(store.saved!.sessions[0].messages.slice(0,2)).toEqual(original.messages);expect(validAnchor(store.saved!.sessions[0],original.branches[0].anchor)).toBe(true);
+  await user.click(screen.getByRole('button',{name:'Previous question version'}));await screen.findByText('Three representations, three roles');
+});
 
 test('The capsule exposes exactly three controls and a closing history can reopen without losing drafts',async()=>{
   const user=userEvent.setup(),original=structuredClone(store.initial!.sessions);

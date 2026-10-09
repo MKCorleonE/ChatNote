@@ -366,5 +366,19 @@
   "DeepSeek and Qwen presets, separate connection profiles and official usage links.": "DeepSeek and Qwen presets, separate connection profiles and official usage links.",
   "First Windows preview": "First Windows preview",
   "Local conversations, recursive annotations, source anchors, workspace backups and Markdown export.": "Local conversations, recursive annotations, source anchors, workspace backups and Markdown export.",
-  "Loading licenses…": "Loading licenses…"
+  "Loading licenses…": "Loading licenses…",
+  "Copy question": "Copy question",
+  "Edit question": "Edit question",
+  "Question text": "Question text",
+  "Cancel editing": "Cancel editing",
+  "Save & regenerate": "Save & regenerate",
+  "Question copied.": "Question copied.",
+  "Previous question version": "Previous question version",
+  "Next question version": "Next question version",
+  "questionVersion": "{current}/{total}",
+  "Saved question versions": "Saved question versions",
+  "Stop generation before switching question versions.": "Stop generation before switching question versions.",
+  "The question is no longer available.": "The question is no longer available.",
+  "This conversation has reached the saved version limit. Start a new conversation to continue editing.": "This conversation has reached the saved version limit. Start a new conversation to continue editing.",
+  "Invalid saved question versions.": "Invalid saved question versions."
 }

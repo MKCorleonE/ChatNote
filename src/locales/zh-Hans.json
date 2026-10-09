@@ -366,5 +366,19 @@
   "DeepSeek and Qwen presets, separate connection profiles and official usage links.": "DeepSeek 和 Qwen 预设、独立连接配置与官方用量链接。",
   "First Windows preview": "首个 Windows 内测版",
   "Local conversations, recursive annotations, source anchors, workspace backups and Markdown export.": "本地对话、递归批注、原文锚点、工作区备份与 Markdown 导出。",
-  "Loading licenses…": "正在加载许可…"
+  "Loading licenses…": "正在加载许可…",
+  "Copy question": "复制问题",
+  "Edit question": "编辑问题",
+  "Question text": "问题内容",
+  "Cancel editing": "取消编辑",
+  "Save & regenerate": "保存并重新生成",
+  "Question copied.": "问题已复制。",
+  "Previous question version": "上一个问题版本",
+  "Next question version": "下一个问题版本",
+  "questionVersion": "{current}/{total}",
+  "Saved question versions": "已保留的问题版本",
+  "Stop generation before switching question versions.": "请先停止生成，再切换问题版本。",
+  "The question is no longer available.": "该问题已不在当前版本中。",
+  "This conversation has reached the saved version limit. Start a new conversation to continue editing.": "本对话已达到历史版本上限，请新建对话继续编辑。",
+  "Invalid saved question versions.": "历史问题版本数据无效。"
 }
