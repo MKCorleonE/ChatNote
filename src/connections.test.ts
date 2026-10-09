@@ -1,6 +1,13 @@
 import { expect,test } from 'vitest';
 import { activateProfile,activeProfile,friendlyError,migrateConnections,newProfile } from './connections';
 import { defaultSettings,emptyWorkspace,validateWorkspace } from './core';
+import { catalogs } from './i18n';
+test('TLS connection closure has localized recovery guidance without reporting revoked credentials',()=>{
+  for(const detail of ['Could not connect to the model provider. [TLS_CONNECTION_CLOSED]','ChatGPT session renewal is temporarily unavailable. [TLS_CONNECTION_CLOSED]']){
+    const error=friendlyError(detail);expect(error.title).toBe('Secure connection interrupted');expect(error.quota).toBe(false);expect(error.detail).toBe(detail);
+    for(const catalog of Object.values(catalogs)){expect(catalog[error.title]).toBeDefined();expect(catalog[error.message]).toBeDefined();}
+  }
+});
 test('Old ChatGPT connection and model migrate without rewriting account credentials',()=>{const s=migrateConnections({...defaultSettings,provider:'chatgpt',model:'my-existing-model'},'https://old-provider.example/v1');expect(activeProfile(s)?.id).toBe('legacy-chatgpt');expect(s.model).toBe('my-existing-model');expect(s.profiles?.find(p=>p.id==='legacy-compatible')?.endpoint).toBe('https://old-provider.example/v1');expect(JSON.stringify(s)).not.toContain('access_token');});
 test('Profiles keep separate endpoints and models across switches and JSON round trips',()=>{let s=migrateConnections({...defaultSettings});const a=newProfile('deepseek'),b=newProfile('qwen');b.model='qwen-model';s={...s,profiles:[...s.profiles!,a,b]};s=activateProfile(s,a.id);expect(s.endpoint).toBe('https://api.deepseek.com');expect(s.model).toBe('deepseek-flash');s=activateProfile(s,b.id);expect(s.model).toBe('qwen-model');const loaded=JSON.parse(JSON.stringify(s));expect(activeProfile(activateProfile(loaded,a.id))?.model).toBe('deepseek-flash');});
 test('Backup validation rejects duplicate profile IDs and embedded credentials',()=>{const w=emptyWorkspace();w.settings.profiles!.push({...w.settings.profiles![0]});expect(()=>validateWorkspace(w)).toThrow(/profile/);w.settings.profiles!.pop();(w.settings.profiles![0] as any).apiKey='secret';expect(()=>validateWorkspace(w)).toThrow(/unsafe/);});

@@ -78,6 +78,55 @@ pub fn client() -> Result<reqwest::Client, String> {
         .build()
         .map_err(|_| "Could not initialize network client".into())
 }
+fn connection_cause(error: &reqwest::Error) -> String {
+    use std::error::Error;
+    let mut parts = Vec::new();
+    let mut source = error.source();
+    while let Some(cause) = source {
+        parts.push(cause.to_string().to_lowercase());
+        source = cause.source();
+    }
+    parts.join(" ")
+}
+pub(crate) fn transport_error(error: &reqwest::Error, message: &str) -> String {
+    let cause = connection_cause(error);
+    let code = if cause.contains("certificate") || cause.contains("unknownissuer") {
+        "TLS_CERTIFICATE_ERROR"
+    } else if error.is_timeout() {
+        "CONNECTION_TIMEOUT"
+    } else if cause.contains("dns error") {
+        "DNS_LOOKUP_FAILED"
+    } else if cause.contains("tls handshake eof") || cause.contains("unexpected eof") {
+        "TLS_CONNECTION_CLOSED"
+    } else {
+        "TRANSPORT_ERROR"
+    };
+    // Only fixed diagnostic codes leave the backend, never URLs, headers or raw causes.
+    format!("{message} [{code}]")
+}
+pub(crate) async fn send_request(
+    mut request: reqwest::RequestBuilder,
+) -> Result<reqwest::Response, reqwest::Error> {
+    for delay in [Some(350), Some(1000), None] {
+        let next = request.try_clone();
+        match request.send().await {
+            Err(error)
+                if error.is_connect()
+                    && !connection_cause(&error).contains("certificate")
+                    && !connection_cause(&error).contains("unknownissuer")
+                    && next.is_some()
+                    && delay.is_some() =>
+            {
+                // Connect errors occur before an HTTP request is sent. Never replay an
+                // HTTP response, a body/stream error or an ambiguous post-send timeout.
+                tokio::time::sleep(std::time::Duration::from_millis(delay.unwrap())).await;
+                request = next.unwrap();
+            }
+            result => return result,
+        }
+    }
+    unreachable!("the final attempt always returns")
+}
 pub fn endpoint(provider: &str, input: &str) -> Result<String, String> {
     if provider == "openai" || provider == "chatgpt" {
         return Ok("https://api.openai.com/v1".into());
@@ -150,15 +199,19 @@ pub async fn list_models(
     let base = self::endpoint(&provider, &endpoint)?;
     let secret = auth::credential(&provider, &base, profile_id.as_deref()).await?;
     let response = checked(
-        client()?
-            .get(format!("{base}/models"))
-            .bearer_auth(&secret)
-            .timeout(std::time::Duration::from_secs(20))
-            .send()
-            .await
-            .map_err(|_| {
-                "Could not connect to the model provider. Check your network and API URL."
-            })?,
+        send_request(
+            client()?
+                .get(format!("{base}/models"))
+                .bearer_auth(&secret)
+                .timeout(std::time::Duration::from_secs(20)),
+        )
+        .await
+        .map_err(|error| {
+            transport_error(
+                &error,
+                "Could not connect to the model provider. Check your network and API URL.",
+            )
+        })?,
         &secret,
     )
     .await?;
@@ -343,8 +396,8 @@ pub async fn generate(
     }
     let result=async {
         let secret=auth::credential(&request.provider,&base,request.profile_id.as_deref()).await?;let compatible=request.provider=="compatible";
-        let pending=client()?.post(format!("{base}/{}",if compatible{"chat/completions"}else{"responses"})).bearer_auth(&secret).json(&body).send();
-        let response=tokio::select!{r=pending=>r.map_err(|_|"Could not connect to the model provider. Check your network.")?, _=cancel_rx.changed()=>return Ok(())};
+        let pending=send_request(client()?.post(format!("{base}/{}",if compatible{"chat/completions"}else{"responses"})).bearer_auth(&secret).json(&body));
+        let response=tokio::select!{r=pending=>r.map_err(|error|transport_error(&error,"Could not connect to the model provider. Check your network."))?, _=cancel_rx.changed()=>return Ok(())};
         let response=checked(response,&secret).await?;let mut stream=response.bytes_stream();let mut parser=Sse::new();let mut complete=false;
         loop{let chunk=tokio::select!{chunk=stream.next()=>chunk,_=cancel_rx.changed()=>return Ok(())};let Some(chunk)=chunk else{break};for frame in parser.push(&chunk.map_err(|_|"The network connection was interrupted. Your partial answer was preserved.")?)?{match parse(&frame,compatible)?{Parsed::Delta(text)=>on_event.send(StreamEvent{r#type:"delta",text:Some(text),error:None}).map_err(|_|"The app window closed")?,Parsed::Done=>{complete=true;on_event.send(StreamEvent{r#type:"done",text:None,error:None}).map_err(|_|"The app window closed")?;},Parsed::Error(e)=>return Err(redact(&e,&secret)),Parsed::Ignore=>{}}}if complete{break;}}
         if !complete{return Err("The stream ended before a completed response. Your partial answer was preserved.".into());}Ok(())
@@ -366,6 +419,209 @@ pub async fn generate(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    fn local_client() -> reqwest::Client {
+        reqwest::Client::builder().no_proxy().build().unwrap()
+    }
+    #[tokio::test]
+    #[ignore = "Explicit public connectivity diagnostic; sends no credentials or inference"]
+    async fn public_connection_probe() {
+        let mut failures = 0;
+        for (url, expected) in [
+            ("https://auth.openai.com/.well-known/jwks.json", 200),
+            ("https://api.openai.com/v1/models", 401),
+        ] {
+            let start = std::time::Instant::now();
+            match send_request(client().unwrap().get(url)).await {
+                Ok(response) => {
+                    println!(
+                        "{url}: HTTP {} ({:.2}s)",
+                        response.status(),
+                        start.elapsed().as_secs_f64()
+                    );
+                    if response.status().as_u16() != expected {
+                        failures += 1;
+                    }
+                }
+                Err(error) => {
+                    println!(
+                        "{url}: {} ({:.2}s)",
+                        transport_error(&error, "Connection failed"),
+                        start.elapsed().as_secs_f64()
+                    );
+                    failures += 1;
+                }
+            }
+        }
+        assert_eq!(failures, 0, "public connectivity has not recovered");
+    }
+    async fn reply_once(listener: tokio::net::TcpListener, status: &str) {
+        let (mut socket, _) = listener.accept().await.unwrap();
+        let mut bytes = Vec::new();
+        let mut chunk = [0; 1024];
+        loop {
+            let size = socket.read(&mut chunk).await.unwrap();
+            assert!(size > 0);
+            bytes.extend_from_slice(&chunk[..size]);
+            if let Some(end) = bytes.windows(4).position(|w| w == b"\r\n\r\n") {
+                let headers = String::from_utf8_lossy(&bytes[..end]).to_lowercase();
+                let length = headers
+                    .lines()
+                    .find_map(|line| line.strip_prefix("content-length: "))
+                    .map(|v| v.parse::<usize>().unwrap())
+                    .unwrap_or(0);
+                if bytes.len() >= end + 4 + length {
+                    break;
+                }
+            }
+        }
+        assert!(bytes.starts_with(b"POST "));
+        socket
+            .write_all(
+                format!("HTTP/1.1 {status}\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok")
+                    .as_bytes(),
+            )
+            .await
+            .unwrap();
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_millis(250), listener.accept())
+                .await
+                .is_err(),
+            "an HTTP response must never cause a POST replay"
+        );
+    }
+    #[tokio::test]
+    async fn connection_retry_can_recover_before_post_is_sent() {
+        let reserved = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = reserved.local_addr().unwrap();
+        drop(reserved);
+        let server = tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            reply_once(tokio::net::TcpListener::bind(addr).await.unwrap(), "200 OK").await;
+        });
+        let response = send_request(
+            local_client()
+                .post(format!("http://{addr}/responses"))
+                .body("synthetic prompt"),
+        )
+        .await
+        .unwrap();
+        assert_eq!(response.status().as_u16(), 200);
+        server.await.unwrap();
+    }
+    #[tokio::test]
+    async fn http_failure_never_replays_post() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(reply_once(listener, "503 Service Unavailable"));
+        let response = send_request(
+            local_client()
+                .post(format!("http://{addr}/responses"))
+                .body("synthetic prompt"),
+        )
+        .await
+        .unwrap();
+        assert_eq!(response.status().as_u16(), 503);
+        server.await.unwrap();
+    }
+    #[tokio::test]
+    async fn tls_connect_retries_are_bounded_and_diagnostics_omit_secrets() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            for _ in 0..3 {
+                let (mut socket, _) = listener.accept().await.unwrap();
+                let mut hello = [0; 1024];
+                let n = socket.read(&mut hello).await.unwrap();
+                assert!(
+                    n > 0 && hello[0] == 22,
+                    "only the TLS handshake may precede a retry"
+                );
+            }
+            assert!(
+                tokio::time::timeout(std::time::Duration::from_millis(250), listener.accept())
+                    .await
+                    .is_err()
+            );
+        });
+        let error = send_request(
+            local_client()
+                .post(format!("https://{addr}/responses?secret=synthetic-secret"))
+                .bearer_auth("synthetic-key")
+                .body("synthetic prompt"),
+        )
+        .await
+        .unwrap_err();
+        assert!(error.is_connect());
+        assert_eq!(
+            transport_error(&error, "Connection failed"),
+            "Connection failed [TLS_CONNECTION_CLOSED]"
+        );
+        server.await.unwrap();
+    }
+    #[tokio::test]
+    async fn connection_closed_after_post_never_replays_it() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut bytes = Vec::new();
+            let mut chunk = [0; 1024];
+            while !bytes.ends_with(b"synthetic prompt") {
+                let n = socket.read(&mut chunk).await.unwrap();
+                assert!(n > 0);
+                bytes.extend_from_slice(&chunk[..n]);
+            }
+            assert!(bytes.starts_with(b"POST "));
+            drop(socket);
+            assert!(
+                tokio::time::timeout(std::time::Duration::from_millis(250), listener.accept())
+                    .await
+                    .is_err()
+            );
+        });
+        let error = send_request(
+            local_client()
+                .post(format!("http://{addr}/responses"))
+                .body("synthetic prompt"),
+        )
+        .await
+        .unwrap_err();
+        assert!(
+            !error.is_connect(),
+            "a post-send error cannot qualify for automatic retry"
+        );
+        server.await.unwrap();
+    }
+    #[tokio::test]
+    async fn cancellation_during_backoff_stops_new_connections() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut hello = [0; 1024];
+            socket.read(&mut hello).await.unwrap();
+            drop(socket);
+            assert!(tokio::time::timeout(
+                std::time::Duration::from_millis(1100),
+                listener.accept()
+            )
+            .await
+            .is_err());
+        });
+        assert!(tokio::time::timeout(
+            std::time::Duration::from_millis(100),
+            send_request(
+                local_client()
+                    .post(format!("https://{addr}/responses"))
+                    .body("synthetic prompt")
+            )
+        )
+        .await
+        .is_err());
+        server.await.unwrap();
+    }
     fn example_request(provider: &str, effort: Option<&str>) -> Request {
         Request {
             request_id: "test".into(),

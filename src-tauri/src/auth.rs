@@ -269,13 +269,14 @@ async fn validate_id(
     let kid = header
         .kid
         .ok_or("The identity token has no signing key identifier")?;
-    let response = network::client()?
-        .get(format!("{AUTH}/.well-known/jwks.json"))
-        .send()
-        .await
-        .map_err(|_| "Could not verify the identity signing keys")?
-        .error_for_status()
-        .map_err(|_| "Identity signing keys are unavailable")?;
+    let response =
+        network::send_request(network::client()?.get(format!("{AUTH}/.well-known/jwks.json")))
+            .await
+            .map_err(|error| {
+                network::transport_error(&error, "Could not verify the identity signing keys")
+            })?
+            .error_for_status()
+            .map_err(|_| "Identity signing keys are unavailable")?;
     let jwks: Value = response
         .json()
         .await
@@ -342,7 +343,7 @@ pub async fn credential(
             .refresh_token
             .as_deref()
             .ok_or("Your ChatGPT connection expired. Sign in again.")?;
-        let response = network::client()?
+        let response = network::send_request(network::client()?
             .post(format!("{AUTH}/api/accounts/oauth/token"))
             .form(&[
                 ("grant_type", "refresh_token"),
@@ -350,9 +351,9 @@ pub async fn credential(
                 ("refresh_token", refresh),
                 ("resource", RESOURCE),
             ])
-            .send()
+        )
             .await
-            .map_err(|_| "ChatGPT session renewal is temporarily unavailable. Your saved session was kept. Retry later without disconnecting.")?;
+            .map_err(|error| network::transport_error(&error, "ChatGPT session renewal is temporarily unavailable. Your saved session was kept. Retry later without disconnecting."))?;
         if !response.status().is_success() {
             let status = response.status().as_u16();
             let error = response.json::<Value>().await.unwrap_or_default();
@@ -516,17 +517,22 @@ pub async fn check_sign_in_service() -> Result<String, String> {
         .user_agent(concat!("ChatNote/", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(|_| "Could not initialize network client")?;
-    let response = client
-        .get(format!("{AUTH}/.well-known/openid-configuration"))
-        .send()
-        .await
-        .map_err(|error| {
-            if error.is_timeout() {
-                "Sign-in service connection timed out. Check your network and retry."
-            } else {
-                "Sign-in service connection failed. Check your network and retry."
-            }
-        })?;
+    let response =
+        network::send_request(client.get(format!("{AUTH}/.well-known/openid-configuration")))
+            .await
+            .map_err(|error| {
+                if error.is_timeout() {
+                    network::transport_error(
+                        &error,
+                        "Sign-in service connection timed out. Check your network and retry.",
+                    )
+                } else {
+                    network::transport_error(
+                        &error,
+                        "Sign-in service connection failed. Check your network and retry.",
+                    )
+                }
+            })?;
     if !response.status().is_success() {
         return Err(format!(
             "Sign-in service returned HTTP {}. Check your network or try again later.",

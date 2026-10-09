@@ -380,5 +380,7 @@
   "Stop generation before switching question versions.": "Stop generation before switching question versions.",
   "The question is no longer available.": "The question is no longer available.",
   "This conversation has reached the saved version limit. Start a new conversation to continue editing.": "This conversation has reached the saved version limit. Start a new conversation to continue editing.",
-  "Invalid saved question versions.": "Invalid saved question versions."
+  "Invalid saved question versions.": "Invalid saved question versions.",
+  "Secure connection interrupted": "Secure connection interrupted",
+  "The secure connection closed before the request was sent. Check your proxy and retry. Your saved connection was kept.": "The secure connection closed before the request was sent. Check your proxy and retry. Your saved connection was kept."
 }
