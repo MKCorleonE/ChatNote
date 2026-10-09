@@ -1,6 +1,17 @@
 import { newSession } from './core';
 import type { Session, Workspace } from './types';
 
+export function hasConversation(session:Session):boolean {
+  return session.messages.length>0||session.branches.length>0||!!session.messageHistory?.some(path=>path.length>0);
+}
+export function startConversation(workspace:Workspace,title:string):Workspace {
+  const current=workspace.sessions.find(s=>s.id===workspace.activeId);
+  // A draft is still the current input page, not a history entry. Reuse it intact.
+  if(current&&!hasConversation(current))return workspace;
+  const session=newSession(title);
+  return {...workspace,sessions:[session,...workspace.sessions],activeId:session.id};
+}
+
 export function affectedBranches(session:Session, messageId:string):Set<string> {
   const removed=new Set(session.branches.filter(b=>b.anchor.messageId===messageId).map(b=>b.id));
   let changed=true;

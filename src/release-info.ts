@@ -2,7 +2,17 @@ import manifest from '../package.json';
 
 export const appVersion = manifest.version;
 export const releaseEntries = [
-  { version: appVersion, date: '2026-10-08', title: 'Capsule sidebar & clearer settings', changes: [
+  { version: appVersion, date: '2026-10-09', title: 'Cleaner conversations & deeper follow-ups', changes: [
+    'Blank new conversations enter history only after a message is sent; unsent drafts are preserved.',
+    'Formula passages render in annotation sources and the follow-up tree without changing original anchors.',
+    'Adaptive cyan question bubbles, edit and regenerate with saved versions, icon actions and contextual timestamps.',
+    'Delete conversations, individual answers and failed responses with linked annotation impact confirmation.',
+    'Pin history into a three-column layout and expand each follow-up round and its nested questions.',
+    'Rounded spring menus, animated renaming and concise annotation previews; clearer composer prompts and AI reminder.',
+    'Windows system proxy support, bounded pre-send reconnects and clearer secure connection diagnostics.',
+    'Existing conversations, passage anchors, connections and sign-in storage are preserved.',
+  ] },
+  { version: '0.5.0', date: '2026-10-08', title: 'Capsule sidebar & clearer settings', changes: [
     'New conversation, history and settings in one capsule, with gentle press and panel transitions.',
     'Settings now have navigation for connections, reading, appearance, data and about.',
     'Added local changelog and searchable third-party license notices.',

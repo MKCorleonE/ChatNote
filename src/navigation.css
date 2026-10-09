@@ -88,5 +88,15 @@
 .annotation-hint>span { color:var(--accent); font-size:10px; }
 .annotation-hint p { margin:5px 0 0; overflow-wrap:anywhere; }
 .annotation-hint.leaving { animation:menu-spring-out .13s ease-in both; }
+.passage-preview { white-space:normal; overflow-wrap:anywhere; }
+.passage-preview>:first-child { margin-top:0; }
+.passage-preview>:last-child { margin-bottom:0; }
+.passage-preview p { margin:8px 0; }
+.passage-preview .katex-display { max-width:100%; overflow:auto; margin:10px 0; }
+.passage-preview pre { max-width:100%; overflow:auto; white-space:pre; }
+.passage-preview.compact { max-height:5.4em; overflow:hidden; line-height:1.8; }
+.passage-preview.compact .katex-display { margin:4px 0; overflow:hidden; }
+.passage-preview.compact p { margin:0; }
+.source-card blockquote { white-space:normal; }
 @media(prefers-reduced-motion:reduce) { .rename-modal,.annotation-hint,.annotation-hint.leaving { animation:none!important; } .session-title:active { transform:none; } }
 @media(prefers-reduced-motion:reduce) { .annotation-panel,.annotation-panel.leaving,.choice-menu,.choice-menu.leaving,.model-menu,.model-menu.leaving,.delete-modal { animation:none!important; } .choice-trigger:active,.model-picker-button:active { transform:none; } }
