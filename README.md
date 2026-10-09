@@ -33,7 +33,9 @@ Windows v0.5.0 内测版：加号新建、三横线历史、齿轮设置置于�
 
 升级时先关闭旧版，再启动新版或安装，不必先断开账号。常用 releases 目录保留 v0.5.0 和 v0.4.0，v0.3.1 及更早版本归档保留。私有下载需要有仓库权限的 GitHub 账号。
 
-开发入口在根目录：`npm run dev`；界面测试为 `npm test`；桌面构建为 `npm run desktop:build`。`prototype` 目录保留早期独立演示。
+小改动预览：先关闭正式版，再双击根目录的 [启动开发预览.cmd](启动开发预览.cmd)。首次需要编译，使用期间保留命令窗口；默认沿用现有工作区和登录。详见 [开发预览说明](docs/DEVELOPMENT_PREVIEW.md)。预览改动先记录为未发布，积累后统一交付新版本。
+
+命令行桌面预览：`npm run desktop:dev`；浏览器界面预览：`npm run dev`；界面测试为 `npm test`；桌面构建为 `npm run desktop:build`。`prototype` 目录保留早期独立演示。
 
 v0.4.0 新增右侧调宽、输入框内模型/连接/思考强度、自动目录缓存、Enter/Alt+Enter 和可定制 RGB 光效。消息附件留待下一轮。
 
