@@ -2,7 +2,13 @@ import manifest from '../package.json';
 
 export const appVersion = manifest.version;
 export const releaseEntries = [
-  { version: appVersion, date: '2026-10-09', title: 'Smoother details & unified highlights', changes: [
+  { version: appVersion, date: '2026-10-09', title: 'Forest & exploration identity', changes: [
+    'Adopted the five staggered outline trees and winding exploration thread selected by the author.',
+    'Updated application, Windows installer, startup, welcome, about and browser tab icons.',
+    'Prepared icon sizes for other platforms; Windows remains the delivered platform.',
+    'Existing conversations, passage anchors, connections and sign-in storage are preserved.',
+  ] },
+  { version: '0.7.0', date: '2026-10-09', title: 'Smoother details & unified highlights', changes: [
     'Delete an answer together with its question and retries, with linked annotation impact confirmation.',
     'A simpler follow-up tree with a tree icon, return to overview and precise passage navigation.',
     'Context previews open with or without a draft and never send a model request.',
