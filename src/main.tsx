@@ -5,4 +5,5 @@ import 'katex/dist/katex.min.css';
 import './styles.css';
 import './composer.css';
 import './message-bubbles.css';
+import './navigation.css';
 createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);
