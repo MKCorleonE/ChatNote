@@ -380,5 +380,7 @@
   "Stop generation before switching question versions.": "請先停止產生，再切換問題版本。",
   "The question is no longer available.": "該問題已不在目前版本中。",
   "This conversation has reached the saved version limit. Start a new conversation to continue editing.": "本對話已達到歷史版本上限，請新增對話繼續編輯。",
-  "Invalid saved question versions.": "歷史問題版本資料無效。"
+  "Invalid saved question versions.": "歷史問題版本資料無效。",
+  "Secure connection interrupted": "安全連線中斷",
+  "The secure connection closed before the request was sent. Check your proxy and retry. Your saved connection was kept.": "請求送出前，安全連線被關閉。請檢查代理後重試；已儲存的登入資訊仍保留。"
 }
