@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight, MessageSquare } from 'lucide-react';
 import { useI18n } from './I18nProvider';
 import { activeMessages } from './message-history';
 import type { Branch, Message, Session } from './types';
+import { PassagePreview } from './PassagePreview';
 import type { CSSProperties } from 'react';
 export function FollowUpTree({session,onOpen,onCollapsed}:{session:Session;onOpen:(branchId:string,messageId?:string)=>void;onCollapsed:(ids:string[])=>void}){
   const {t,plural,n}=useI18n();
@@ -15,7 +16,7 @@ export function FollowUpTree({session,onOpen,onCollapsed}:{session:Session;onOpe
     function answer(m:Message){const nested=children.filter(c=>c.anchor.messageId===m.id);return <li className="tree-answer-node" key={m.id}><button className="tree-answer" onClick={()=>onOpen(b.id,m.id)} aria-label={t('Open answer')+` · ${m.text.slice(0,60)||t('status.'+m.status)}`}><span>{m.text.replace(/\s+/g,' ').slice(0,180)||t('status.'+m.status)}</span>{m.status!=='complete'&&m.text&&<small>{t('status.'+m.status)}</small>}</button>{nested.length>0&&<ul className="tree-nested">{nested.map(c=>node(c,depth+1))}</ul>}</li>;}
     return <li className="tree-node" key={b.id} style={{'--depth':Math.min(depth,8)} as CSSProperties}><div className="tree-row">
       <button className="tree-toggle icon-button" aria-label={t(closed?'Expand annotation':'Collapse annotation')+` · ${b.anchor.quote.slice(0,45)}`} aria-expanded={!closed} onClick={()=>toggle(b.id)}>{closed?<ChevronRight size={14}/>:<ChevronDown size={14}/>}</button>
-      <button className="tree-open" onClick={()=>onOpen(b.id)}><span className="tree-source">“{b.anchor.quote.slice(0,100)}”</span><small>{plural('turnCount',turns.length)}{b.note?` · ${t('Private note')}`:''}</small></button></div>
+      <button className="tree-open" onClick={()=>onOpen(b.id)}><div className="tree-source"><PassagePreview text={b.anchor.quote} compact/></div><small>{plural('turnCount',turns.length)}{b.note?` · ${t('Private note')}`:''}</small></button></div>
       {!closed&&<ul className="tree-turns">{turns.map(({question,answers},i)=>{const key=`turn:${b.id}:${question.id}`,folded=session.view.collapsed.includes(key);return <li key={question.id} className="tree-turn"><div className="tree-row">{disclosure(key,question.text.slice(0,45))}<button className="tree-question" onClick={()=>onOpen(b.id,question.id)}><small>{t('Question')} {n(i+1)}</small><span>{question.text}</span></button></div>{!folded&&<ul className="tree-answers">{answers.map(answer)}{!answers.length&&<li className="tree-no-answer">{t('No answer yet')}</li>}</ul>}</li>;})}{loose.map(answer)}{!turns.length&&!loose.length&&b.note&&<li className="tree-note">{b.note.slice(0,150)}</li>}{archived.length>0&&<li className="tree-archived"><span className="small muted">{t('Annotations from saved answer versions')}</span><ul>{archived.map(c=>node(c,depth+1))}</ul></li>}</ul>}
     </li>;
   }

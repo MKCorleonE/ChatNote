@@ -6,7 +6,7 @@ ChatNote 是独立的跨平台 AI 对话与笔记软件项目，目标平台为 
 
 核心体验：沿主线学习，选中回答中的词语或段落建立可持续追问的批注，在批注内继续深入，并通过追问树与笔记回顾内容。
 
-已确认沿用现有原型、Windows 先跑通、预留全部平台。界面以当前对话与右侧追问为中心，弱化左侧历史列表，保持简洁且有设计感；历史通过胶囊按钮按需展开，选中会话后收回。
+已确认沿用现有原型、Windows 先跑通、预留全部平台。界面以当前对话与右侧追问为中心，弱化左侧历史列表，保持简洁且有设计感；历史通过胶囊按钮按需展开，也可固定为三栏布局。
 
 项目于 2026-10-08 从 CodexAnnotation 更名为 ChatNote，进入独立产品规划阶段。当前目录名仍为 `D:\CodexAnnotation`。
 
@@ -22,22 +22,18 @@ v0.3.0 扩大代码/公式/格式选区，补齐常见公式写法，新增私�
 
 Windows v0.5.0 内测版：加号新建、三横线历史、齿轮设置置于同一胶囊，加入轻按压与面板开合动效。设置按模型与连接、阅读与上下文、外观、数据与隐私分区，并提供关于、更新日志和可搜索的开源许可。现有对话、批注锚点、笔记、草稿、连接及凭据存储保留；本版安装升级与手感仍待用户验收。
 
-- [v0.5.0 Windows 安装包](https://github.com/MKCorleonE/ChatNote/releases/download/v0.5.0/ChatNote_0.5.0_x64-setup.exe)
-- [v0.5.0 可直接启动的程序](https://github.com/MKCorleonE/ChatNote/releases/download/v0.5.0/ChatNote_0.5.0.exe)
-- [v0.5.0 使用与验证](docs/V0.5.0_VALIDATION.md)
+- [v0.6.0 Windows 安装包](https://github.com/MKCorleonE/ChatNote/releases/download/v0.6.0/ChatNote_0.6.0_x64-setup.exe)
+- [v0.6.0 可直接启动的程序](https://github.com/MKCorleonE/ChatNote/releases/download/v0.6.0/ChatNote_0.6.0.exe)
+- [v0.6.0 使用与验证](docs/V0.6.0_VALIDATION.md)
 - [版本保留规则](docs/RELEASE_POLICY.md)
 - [国际化维护说明](docs/INTERNATIONALIZATION.md)
 - [v0.1.0 基线验证](docs/BUILD_AND_VALIDATION.md)
 
-[升级 PR #1](https://github.com/MKCorleonE/ChatNote/pull/1) 经[云端检查](https://github.com/MKCorleonE/ChatNote/actions/runs/37794216118)通过后已合入 main，私有 v0.5.0 Release 与三项附件已发布并校验。本地文件位于 releases。
+0.6.0 汇总开发预览期间的气泡、编辑版本、删除/固定历史、逐轮追问树、动效与连接恢复，并新增空会话不进入历史和追问来源公式显示。软件内更新日志与三语资源已同步。[本版验证与限制](docs/V0.6.0_VALIDATION.md)。
 
-升级时先关闭旧版，再启动新版或安装，不必先断开账号。常用 releases 目录保留 v0.5.0 和 v0.4.0，v0.3.1 及更早版本归档保留。私有下载需要有仓库权限的 GitHub 账号。
+升级时先关闭旧版及开发预览/启动服务，再启动新版或安装，无需退出账号。常用目录保留 0.6.0 与 0.5.0，0.4.0 及更早交付归档保留；原对话、锚点、草稿、连接与凭据保留。私有下载需要仓库权限。
 
-小改动预览：先关闭正式版，再双击根目录的 [启动开发预览.cmd](启动开发预览.cmd)。首次需要编译，使用期间保留命令窗口；默认沿用现有工作区和登录。详见 [开发预览说明](docs/DEVELOPMENT_PREVIEW.md)。预览改动先记录为未发布，积累后统一交付新版本。
-
-当前开发预览已加入自适应青色提问气泡、问题复制/编辑重发与 HH:mm 时间、回答图标复制和消息标题精简；旧回答、后续对话及批注来源保留并可切换。详见 [本轮使用与验证](docs/PREVIEW_CHAT_REFINEMENTS.md)，尚未打包进正式 v0.5.0。
-
-最新预览继续精简：提问操作悬停显示，回答去掉完成统计并采用复制/上下文图标；时间按今天、星期和月日显示，回答时间悬停出现，图标随阅读字号缩放。原有手动气泡圆角和内边距保留。
+小改动继续先开发预览，再积累发布：双击 [启动开发预览.cmd](启动开发预览.cmd)，默认沿用工作区与登录。[开发说明](docs/DEVELOPMENT_PREVIEW.md)。
 
 命令行桌面预览：`npm run desktop:dev`；浏览器界面预览：`npm run dev`；界面测试为 `npm test`；桌面构建为 `npm run desktop:build`。`prototype` 目录保留早期独立演示。
 

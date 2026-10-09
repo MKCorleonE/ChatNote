@@ -1,9 +1,14 @@
 import { expect,test } from 'vitest';
-import { affectedBranches,deleteAnswer,deleteConversation } from './conversation-management';
+import { affectedBranches,deleteAnswer,deleteConversation,hasConversation,startConversation } from './conversation-management';
 import { contextFor,emptyWorkspace,exampleSession,makeAnchor,message,newSession,snapshot,validateWorkspace } from './core';
 import { activeMessages,editThread } from './message-history';
 import type { Branch,Session } from './types';
 function child(s:Session,parent:Branch|null,answerId:string):Branch {const m=(parent?.messages??s.messages).find(m=>m.id===answerId)!;const anchor=makeAnchor(m,0,Math.min(20,m.text.length));return {id:crypto.randomUUID(),parentId:parent?.id??null,anchor,messages:[message('user','Nested question'),message('assistant','Nested answer text')],createdAt:Date.now(),sourceContext:snapshot(s,parent?.id??null,anchor)};}
+
+test('New blank conversations stay out of history and repeated creation reuses the intact input draft',()=>{
+ const w=emptyWorkspace(),s=w.sessions[0];s.view.drafts.main='Unsent draft';const original=structuredClone(w);expect(hasConversation(s)).toBe(false);expect(startConversation(w,'New conversation')).toBe(w);expect(w).toEqual(original);
+ s.messages.push(message('user','A sent question'),message('assistant','','error'));expect(hasConversation(s)).toBe(true);const next=startConversation(w,'New conversation');expect(next.sessions.filter(hasConversation)).toEqual([s]);expect(startConversation(next,'New conversation')).toBe(next);expect(next.sessions).toHaveLength(2);expect(next.settings).toBe(w.settings);expect(()=>validateWorkspace(next)).not.toThrow();
+});
 test('History deletion preserves the active conversation, drafts and connection settings; deleting the last creates an empty session',()=>{
  const w=emptyWorkspace(),other=newSession('Old topic');w.sessions.push(other);w.sessions[0].view.drafts.main='Keep this draft';const config=structuredClone(w.settings);
  const next=deleteConversation(w,other.id,'New conversation');expect(next.activeId).toBe(w.activeId);expect(next.sessions[0]).toEqual(w.sessions[0]);expect(next.settings).toEqual(config);expect(w.sessions).toHaveLength(2);

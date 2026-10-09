@@ -408,5 +408,13 @@
   "Continue asking?": "继续追问？",
   "AI can make mistakes. Please check important information.": "AI可能会出错，请检查重要信息",
   "Save name": "保存名称",
-  "followUpPreviewCount": "{count} 次追问"
+  "followUpPreviewCount": "{count} 次追问",
+  "Cleaner conversations & deeper follow-ups": "更纯净的对话与更深入的追问",
+  "Blank new conversations enter history only after a message is sent; unsent drafts are preserved.": "空白新会话发送消息后才进入历史，未发送草稿保留。",
+  "Formula passages render in annotation sources and the follow-up tree without changing original anchors.": "批注原文与追问树渲染公式，原始公式与来源锚点不变。",
+  "Adaptive cyan question bubbles, edit and regenerate with saved versions, icon actions and contextual timestamps.": "青色自适应提问气泡、编辑重发与保留版本、图标操作和分层时间。",
+  "Delete conversations, individual answers and failed responses with linked annotation impact confirmation.": "会话、单条回答及失败记录可删除，确认关联批注影响范围。",
+  "Pin history into a three-column layout and expand each follow-up round and its nested questions.": "固定历史形成三栏，逐轮展开追问与下级问题。",
+  "Rounded spring menus, animated renaming and concise annotation previews; clearer composer prompts and AI reminder.": "圆角弹性菜单与改名框、精简批注摘要、输入提示与 AI 信息提醒。",
+  "Windows system proxy support, bounded pre-send reconnects and clearer secure connection diagnostics.": "支持 Windows 系统代理，发送前有限重连与更清晰的安全连接诊断。"
 }

@@ -408,5 +408,13 @@
   "Continue asking?": "Continue asking?",
   "AI can make mistakes. Please check important information.": "AI can make mistakes. Please check important information.",
   "Save name": "Save name",
-  "followUpPreviewCount": "{count} follow-up questions"
+  "followUpPreviewCount": "{count} follow-up questions",
+  "Cleaner conversations & deeper follow-ups": "Cleaner conversations & deeper follow-ups",
+  "Blank new conversations enter history only after a message is sent; unsent drafts are preserved.": "Blank new conversations enter history only after a message is sent; unsent drafts are preserved.",
+  "Formula passages render in annotation sources and the follow-up tree without changing original anchors.": "Formula passages render in annotation sources and the follow-up tree without changing original anchors.",
+  "Adaptive cyan question bubbles, edit and regenerate with saved versions, icon actions and contextual timestamps.": "Adaptive cyan question bubbles, edit and regenerate with saved versions, icon actions and contextual timestamps.",
+  "Delete conversations, individual answers and failed responses with linked annotation impact confirmation.": "Delete conversations, individual answers and failed responses with linked annotation impact confirmation.",
+  "Pin history into a three-column layout and expand each follow-up round and its nested questions.": "Pin history into a three-column layout and expand each follow-up round and its nested questions.",
+  "Rounded spring menus, animated renaming and concise annotation previews; clearer composer prompts and AI reminder.": "Rounded spring menus, animated renaming and concise annotation previews; clearer composer prompts and AI reminder.",
+  "Windows system proxy support, bounded pre-send reconnects and clearer secure connection diagnostics.": "Windows system proxy support, bounded pre-send reconnects and clearer secure connection diagnostics."
 }
