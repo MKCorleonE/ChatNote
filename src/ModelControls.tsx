@@ -28,7 +28,7 @@ export function ModelControls(props: Props) {
   useEffect(() => {
     if (!open) return;
     search.current?.focus();
-    const outside = (e: PointerEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false); };
+    const outside = (e: PointerEvent) => { if (!root.current?.contains(e.target as Node)&&!(e.target as Element).closest('.floating-choice')) setOpen(false); };
     const escape = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
     document.addEventListener('pointerdown', outside); document.addEventListener('keydown', escape);
     return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); };

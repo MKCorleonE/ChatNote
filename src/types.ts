@@ -9,9 +9,10 @@ export type ProviderKind = 'openai' | 'chatgpt' | 'compatible';
 export type Preset = 'openai' | 'chatgpt' | 'deepseek' | 'qwen' | 'custom';
 export type ReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'ultra';
 export interface ComposerGlow { enabled: boolean; colorA: string; colorB: string; seconds: number; brightness: number }
+export interface AnnotationHighlight { color: 'yellow' | 'green' | 'cyan' | 'pink' | 'purple' | 'orange'; opacity: number }
 export interface CatalogSnapshot { provider: ProviderKind; endpoint: string; models: Model[]; updatedAt: number }
 export interface ConnectionProfile { id: string; name: string; preset: Preset; provider: ProviderKind; endpoint: string; model: string; reasoningEffort?: ReasoningEffort; checkedAt?: number; checkState?: 'catalog' | 'error'; checkMessage?: string }
-export interface Settings { provider: ProviderKind; endpoint: string; model: string; reasoningEffort?: ReasoningEffort; profiles?: ConnectionProfile[]; activeProfileId?: string; modelCatalogs?: Record<string, CatalogSnapshot>; panelWidth?: number; historyPinned?:boolean; composerGlow?: ComposerGlow; language?: Language; fontSize: number; annotations: boolean; theme: 'dark' | 'light'; contextBudget: number }
+export interface Settings { provider: ProviderKind; endpoint: string; model: string; reasoningEffort?: ReasoningEffort; profiles?: ConnectionProfile[]; activeProfileId?: string; modelCatalogs?: Record<string, CatalogSnapshot>; panelWidth?: number; historyPinned?:boolean; composerGlow?: ComposerGlow; annotationHighlight?: AnnotationHighlight; language?: Language; fontSize: number; annotations: boolean; theme: 'dark' | 'light'; contextBudget: number }
 export interface Workspace { version: 1; sessions: Session[]; activeId: string; settings: Settings }
 export interface ContextItem { role: 'user' | 'assistant'; content: string }
 export interface ContextReport { source: string; characters: number; budget: number; summarized: boolean; omittedTurns: number; items: ContextItem[] }

@@ -2,7 +2,16 @@ import manifest from '../package.json';
 
 export const appVersion = manifest.version;
 export const releaseEntries = [
-  { version: appVersion, date: '2026-10-09', title: 'Cleaner conversations & deeper follow-ups', changes: [
+  { version: appVersion, date: '2026-10-09', title: 'Smoother details & unified highlights', changes: [
+    'Delete an answer together with its question and retries, with linked annotation impact confirmation.',
+    'A simpler follow-up tree with a tree icon, return to overview and precise passage navigation.',
+    'Context previews open with or without a draft and never send a model request.',
+    'Spring menus across appearance, models, connections and more actions; click outside to dismiss.',
+    'Rounded notes and ambient lighting with a capsule switch, RGB sliders and default color reset.',
+    'Six highlighter colors and linear opacity apply equally to annotated text and formulas.',
+    'Existing conversations, passage anchors, connections and sign-in storage are preserved.',
+  ] },
+  { version: '0.6.0', date: '2026-10-09', title: 'Cleaner conversations & deeper follow-ups', changes: [
     'Blank new conversations enter history only after a message is sent; unsent drafts are preserved.',
     'Formula passages render in annotation sources and the follow-up tree without changing original anchors.',
     'Adaptive cyan question bubbles, edit and regenerate with saved versions, icon actions and contextual timestamps.',

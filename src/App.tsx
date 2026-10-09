@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
-import { ArrowDownToLine, ArrowLeft, ArrowUp, BookOpen, Check, ChevronDown, Copy, FilePlus2, Layers3, Menu, MessageSquare, MoreHorizontal, NotebookText, Pin, PinOff, Plus, Search, Settings as SettingsIcon, Square, Trash2, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowLeft, ArrowUp, BookOpen, Check, ChevronDown, Copy, FilePlus2, TreeDeciduous, Menu, MessageSquare, MoreHorizontal, NotebookText, Pin, PinOff, Plus, Search, Settings as SettingsIcon, Square, Trash2, X } from 'lucide-react';
 import * as bridge from './bridge';
 import { ancestry, contextFor, emptyWorkspace, exampleSession, exportMarkdown, makeAnchor, message, recoverWorkspace, snapshot, uid, validAnchor, validateWorkspace } from './core';
 import type { Anchor, Branch, ContextReport, Message, Session, View, Workspace } from './types';
 import { RichText } from './RichText';
 import Settings from './Settings';
 import { usePresence } from './usePresence';
-import { selectedSource } from './source';
+import { highlightStyle } from './annotation-style';
+import { selectedSource, sourceRange } from './source';
 import { AnswerStatus } from './AnswerStatus';
 import { resolveLanguage, translator } from './i18n';
 import { I18nProvider } from './I18nProvider';
@@ -80,6 +81,13 @@ export default function App() {
   function closeHistory(){setHistory(false);if(dockedHistory)setW(prev=>prev?{...prev,settings:{...prev.settings,historyPinned:false}}:prev);}
   function toggleHistoryPin(){setW(prev=>prev?{...prev,settings:{...prev.settings,historyPinned:!prev.settings.historyPinned}}:prev);setHistory(true);}
   const settingsPresence = usePresence(settings);
+  const morePresence = usePresence(more);
+  useEffect(()=>{
+    if(!more)return;
+    const outside=(e:PointerEvent)=>{if(!(e.target as Element).closest('.action-menu,[data-more-trigger]'))setMore(false);};
+    document.addEventListener('pointerdown',outside);
+    return()=>document.removeEventListener('pointerdown',outside);
+  },[more]);
   useEffect(() => {
     if (!history) return;
     document.querySelector<HTMLInputElement>('#conversation-history input')?.focus();
@@ -443,7 +451,19 @@ export default function App() {
       setJob(null);
     }
   }
-  function send(where: 'main' | 'branch', previewOnly=false, edit?: Message) {
+  function previewContext(where:'main'|'branch') {
+    if(!current||!w||jobRef.current)return;
+    let b=where==='branch'?current.branches.find(b=>b.id===current.view.branchId)??null:null;
+    if(where==='branch'&&draft){
+      if(!validAnchor(current,draft.anchor)){notify('The source is no longer valid. Please select it again.');return;}
+      b={id:uid(),parentId:draft.parentId,anchor:draft.anchor,messages:[],createdAt:Date.now(),sourceContext:snapshot(current,draft.parentId,draft.anchor)};
+    }
+    if(where==='branch'&&!b)return;
+    const key=where==='main'?'main':draft?'new':b!.id, question=current.view.drafts[key]?.trim();
+    const thread=b??current, next=question?appendThread(thread,message('user',question)):thread;
+    try{const report=contextFor(b?current:{...current,...next},b?{...b,...next}:null,w.settings.contextBudget);setContextPreview(true);setPendingSend(null);setContext(report);}catch(error){notify(String(error));}
+  }
+  function send(where: 'main' | 'branch' , previewOnly=false, edit?: Message) {
     if (!current || !w || jobRef.current) return;
     const targetBranchId = where === 'main' ? null : current.view.branchId;
     const draftKey = edit ? editDraftKey(targetBranchId, edit) : where === 'main' ? 'main' : draft ? 'new' : current.view.branchId ?? 'new';
@@ -590,12 +610,16 @@ export default function App() {
     setTimeout(() => {
       const container = parentId ? panelRef.current : mainRef.current;
       const node = [...(container?.querySelectorAll<HTMLElement>('[data-message-id]') ?? [])].find(n => n.dataset.messageId === anchor.messageId);
-      node?.scrollIntoView({
-        block: 'center',
-        behavior: 'smooth'
-      });
-      node?.classList.add('source-flash');
-      setTimeout(() => node?.classList.remove('source-flash'), 1600);
+      if(!node||!container)return;
+      const range=sourceRange(node,anchor.start,anchor.end);
+      const first=range&&typeof range.getClientRects==='function'?range.getClientRects()[0]:undefined;
+      const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      if(first)container.scrollTo({top:container.scrollTop+first.top-container.getBoundingClientRect().top-container.clientHeight*.35,behavior:reduced?'auto':'smooth'});
+      else node.querySelector<HTMLElement>(`[data-source-start="${anchor.start}"]`)?.scrollIntoView({block:'center',behavior:reduced?'auto':'smooth'});
+      const registry=(globalThis.CSS as any)?.highlights, Highlight=(globalThis as any).Highlight;
+      if(range&&registry&&Highlight){registry.set('source-location',new Highlight(range));setTimeout(()=>registry.delete('source-location'),2200);}
+      else {const leaf=[...node.querySelectorAll<HTMLElement>('[data-source-start]')].find(el=>Number(el.dataset.sourceStart)<=anchor.start&&Number(el.dataset.sourceEnd)>anchor.start);leaf?.classList.add('source-flash');setTimeout(()=>leaf?.classList.remove('source-flash'),2200);}
+
     }, 80);
   }
   function showTree() {
@@ -651,7 +675,7 @@ export default function App() {
       const next=target.messageId?{...state,sessions:state.sessions.map(s=>s.id===target.sessionId?deleteAnswer(s,target.messageId!):s)}:deleteConversation(state,target.sessionId,t('New conversation'));
       validateWorkspace(next);setW(next);setPendingDelete(null);setMore(false);
       if(state.activeId===target.sessionId){const updated=next.sessions.find(s=>s.id===next.activeId)!;if(!target.messageId||draft&&!validAnchor(updated,draft.anchor))setDraft(null);if(!target.messageId||selection&&!validAnchor(updated,selection.anchor))setSelection(null);setEditing(null);setPendingSend(null);setContext(null);setPromotion(null);}
-      notify(target.messageId?'Answer deleted.':'Conversation deleted.');
+      notify(target.messageId?'Question and answers deleted.':'Conversation deleted.');
     }catch(error){notify(String(error));}
   }
   async function copyMessage(m: Message) {
@@ -700,7 +724,7 @@ export default function App() {
           e.preventDefault();
           send(where);
         }
-      }} /><div className="composer-footer"><ModelControls settings={w!.settings} {...modelCatalog} disabled={!!job} onProfile={id=>setW(prev=>prev?{...prev,settings:activateProfile(prev.settings,id)}:prev)} onModel={model=>{const supported=supportedEfforts(w!.settings.provider,model,modelCatalog.catalog);updateProfile({model,reasoningEffort:supported.includes(w!.settings.reasoningEffort!)?w!.settings.reasoningEffort:undefined});}} onEffort={reasoningEffort=>updateProfile({reasoningEffort})} onRefresh={()=>void modelCatalog.refresh()} onSettings={()=>setSettings(true)} onNotice={notify}/><div className="composer-actions"><button type="button" className="text-button context-preview" disabled={!!job||!current?.view.drafts[key]?.trim()} onClick={()=>send(where,true)}>{t('Preview context')}</button>{job ? <button className="send stop" type="button" onClick={stop} aria-label={t("Stop generation")}><Square size={13} fill="currentColor" /></button> : <button className="send" type="submit" disabled={!current?.view.drafts[key]?.trim()} aria-label={where === 'main' ? t("Send main message") : t("Send annotation message")}><ArrowUp size={18} /></button>}</div></div><div className="composer-hint"><span>{t(where === 'main' ? 'Main conversation' : 'Only in this annotation')}</span><span>{t('Enter to send · Alt+Enter for a new line')}</span></div></form>;
+      }} /><div className="composer-footer"><ModelControls settings={w!.settings} {...modelCatalog} disabled={!!job} onProfile={id=>setW(prev=>prev?{...prev,settings:activateProfile(prev.settings,id)}:prev)} onModel={model=>{const supported=supportedEfforts(w!.settings.provider,model,modelCatalog.catalog);updateProfile({model,reasoningEffort:supported.includes(w!.settings.reasoningEffort!)?w!.settings.reasoningEffort:undefined});}} onEffort={reasoningEffort=>updateProfile({reasoningEffort})} onRefresh={()=>void modelCatalog.refresh()} onSettings={()=>setSettings(true)} onNotice={notify}/><div className="composer-actions"><button type="button" className="text-button context-preview" disabled={!!job} onClick={()=>previewContext(where)}>{t('Preview context')}</button>{job ? <button className="send stop" type="button" onClick={stop} aria-label={t("Stop generation")}><Square size={13} fill="currentColor" /></button> : <button className="send" type="submit" disabled={!current?.view.drafts[key]?.trim()} aria-label={where === 'main' ? t("Send main message") : t("Send annotation message")}><ArrowUp size={18} /></button>}</div></div><div className="composer-hint"><span>{t(where === 'main' ? 'Main conversation' : 'Only in this annotation')}</span><span>{t('Enter to send · Alt+Enter for a new line')}</span></div></form>;
   }
   if (!w || !current) return <div className="boot"><div className="brand-symbol">◈</div><h1>ChatNote</h1><p>{loadError || t("Opening your workspace\u2026")}</p>{loadError && <><p className="muted">{t("Your existing records have not been replaced. Close and reopen, or restore a backup.")}</p><input type="file" accept=".json" onChange={async e => {
         const file = e.target.files?.[0];
@@ -715,12 +739,12 @@ export default function App() {
         }
       }} /></>}</div>;
   return <I18nProvider language={language}><div className={`app ${dockedHistory?'history-pinned':''}`} style={{
-    '--reading-size': `${w.settings.fontSize}px`, '--panel-width': `${clampPanel(w.settings.panelWidth ?? 370, panelViewport)}px`
+    ...highlightStyle(w.settings), '--reading-size': `${w.settings.fontSize}px`, '--panel-width': `${clampPanel(w.settings.panelWidth ?? 370, panelViewport)}px`
   } as CSSProperties} onMouseUp={selectText} onKeyUp={e => {
     if (e.shiftKey) selectText();
   }} onTouchEnd={() => setTimeout(selectText, 60)}>
     <nav className="rail" aria-label={t('Navigation')}><div className="rail-capsule"><button className="rail-button rail-new" onClick={() => addSession()} title={t('New conversation')} aria-label={t('New conversation')}><Plus size={20}/></button><button className={`rail-button ${historyVisible ? 'active' : ''}`} aria-expanded={historyVisible} aria-controls="conversation-history" onClick={() => { if(historyVisible)closeHistory();else setHistory(true); setSettings(false); setMore(false); }} title={t('Conversations')} aria-label={t('Open conversations')}><Menu size={19}/></button><button className={`rail-button rail-settings ${settings ? 'active' : ''}`} aria-expanded={settings} onClick={() => { setSettings(x => !x); setHistory(false); setMore(false); }} title={t('Settings')} aria-label={t('Open settings')}><SettingsIcon size={19}/></button></div></nav>
-    <div className="workspace"><header className="topbar"><div className="title-group"><span className="wordmark">ChatNote</span><span className="title-divider" /><button className="session-title" title={t("Rename conversation")} onClick={() => setRenaming({sessionId:current.id,title:current.title})}>{current.title}<ChevronDown size={12} /></button></div><div className="top-actions"><span className="local-status" title={ui(saved)}><span className={`status-dot ${saved.startsWith('Not') ? 'bad' : ''}`} />{saved === 'Saving…' ? t("Saving\u2026") : t("Local workspace")}</span>{w.settings.annotations && <button className={`toolbar-button ${mode === 'tree' ? 'active' : ''}`} onClick={showTree} aria-label={t("Follow-up tree")} title={t("Follow-up tree")}><Layers3 size={16} /><span>{t("Follow-up tree")}</span>{current.branches.length > 0 && <small>{n(current.branches.length)}</small>}</button>}<button className="icon-button" onClick={() => setMore(x => !x)} aria-label={t("More actions")}><MoreHorizontal size={19} /></button></div>{more && <div className="action-menu"><button onClick={async () => {
+    <div className="workspace"><header className="topbar"><div className="title-group"><span className="wordmark">ChatNote</span><span className="title-divider" /><button className="session-title" title={t("Rename conversation")} onClick={() => setRenaming({sessionId:current.id,title:current.title})}>{current.title}<ChevronDown size={12} /></button></div><div className="top-actions">{w.settings.annotations && <button className={`toolbar-button ${mode === 'tree' ? 'active' : ''}`} onClick={showTree} aria-label={t("Follow-up tree")} title={t("Follow-up tree")}><TreeDeciduous size={16} /><span>{t("Follow-up tree")}</span>{current.branches.length > 0 && <small>{n(current.branches.length)}</small>}</button>}<button data-more-trigger className="icon-button" aria-expanded={more} onClick={() => setMore(x => !x)} aria-label={t("More actions")}><MoreHorizontal size={19} /></button></div>{morePresence.rendered && <div inert={morePresence.leaving} aria-hidden={morePresence.leaving} className={`action-menu ${morePresence.leaving?'leaving':''}`}><button onClick={async () => {
             setMore(false);
             try {
               await bridge.saveFile(`${safeName(current.title)}.md`, exportMarkdown(current, language));
@@ -740,14 +764,14 @@ export default function App() {
     <div className={`content-layout ${panelPresence.rendered ? 'with-panel' : ''}`}><main className="main-column"><div className="main-scroll" ref={mainRef} onScroll={schedulePositionSave}>
       {!activeMessages(current).length ? <div className="welcome"><div className="welcome-icon">◈</div><span className="eyebrow">{t("A LITTLE MORE ROOM TO THINK")}</span><h1>{t("Follow your curiosity.")}<br /><span>{t("Keep your thread.")}</span></h1><p>{t("A conversation for the big picture.")}<br />{t("Annotations for everything worth exploring.")}</p><div className="starter-grid">{['Help me understand a complex topic', 'Think through an idea with me', 'Turn a question into a learning path'].map((q, i) => <button key={q} onClick={() => setDraftText('main', t(q))}><span>{String(i + 1).padStart(2, '0')}</span>{t(q)}<ArrowUp size={14} /></button>)}</div><button className="example-link" onClick={() => addSession(true)}>{t("Explore the annotation example")}<ArrowUp size={13} /></button></div> : <div className="transcript">{current.example && <div className="example-banner"><span className="eyebrow">{t("INTERACTIVE EXAMPLE")}</span><span>{t("These starting answers are examples. New messages use your connected model.")}</span></div>}{activeMessages(current).map(m => card(m, null))}<div className="transcript-end" /></div>}
     </div>{job?.sessionId===current.id&&!job.branchId&&!following.current.main&&<button className="jump-latest" onClick={()=>{following.current.main=true;mainRef.current?.scrollTo({top:mainRef.current.scrollHeight});}}>{t('Jump to latest answer')}</button>}<div className="main-compose">{composer('main')}<div className="under-composer ai-notice">{t("AI can make mistakes. Please check important information.")}</div></div></main>
-    {panelPresence.rendered && <aside key={panelMode} inert={panelPresence.leaving} aria-hidden={panelPresence.leaving} className={`annotation-panel ${panelPresence.leaving?'leaving':''}`}><PanelDivider width={clampPanel(w.settings.panelWidth ?? 370,panelViewport)} viewport={panelViewport} onChange={panelWidth=>setW(prev=>prev?{...prev,settings:{...prev.settings,panelWidth}}:prev)}/><header className="panel-header"><div><span className="eyebrow">{panelMode === 'tree' ? t("REVIEW & NAVIGATE") : draft ? t("SELECTED PASSAGE") : t("PASSAGE FOLLOW-UP")}</span><h2>{panelMode === 'tree' ? t("Follow-up tree") : draft ? t("New annotation") : t("Annotation")}{panelMode !== 'tree' && branch && <span className="level">{ancestry(current, branch.id).length > 1 ? t('levelLabel', {count:n(ancestry(current, branch.id).length)}) : ''}</span>}</h2></div><button className="icon-button" aria-label={t("Close annotation panel")} onClick={() => {
+    {panelPresence.rendered && <aside key={panelMode} inert={panelPresence.leaving} aria-hidden={panelPresence.leaving} className={`annotation-panel ${panelPresence.leaving?'leaving':''}`}><PanelDivider width={clampPanel(w.settings.panelWidth ?? 370,panelViewport)} viewport={panelViewport} onChange={panelWidth=>setW(prev=>prev?{...prev,settings:{...prev.settings,panelWidth}}:prev)}/><header className="panel-header"><div>{panelMode !== 'tree' && <span className="eyebrow">{draft ? t("SELECTED PASSAGE") : t("PASSAGE FOLLOW-UP")}</span>}<h2>{panelMode === 'tree' ? <><TreeDeciduous size={20}/>{t("Follow-up tree")}</> : draft ? t("New annotation") : t("Annotation")}{panelMode !== 'tree' && branch && <span className="level">{ancestry(current, branch.id).length > 1 ? t('levelLabel', {count:n(ancestry(current, branch.id).length)}) : ''}</span>}</h2></div><div className="panel-header-actions">{panelMode !== 'tree' && <button className="icon-button" aria-label={t("Back to overview")} title={t("Back to overview")} onClick={showTree}><ArrowLeft size={18}/></button>}<button className="icon-button" aria-label={t("Close annotation panel")} onClick={() => {
               remember();
               viewPatch(current.id, {
                 mode:'closed',draftSource:undefined
               });
               setDraft(null);
-            }}><X size={18} /></button></header>
-      <div className="panel-scroll" ref={panelRef} onScroll={schedulePositionSave}>{panelMode === 'tree' ? <><p className="panel-intro">{t("A trail of questions, each connected to its source.")}</p><FollowUpTree session={current} onOpen={openBranch} onCollapsed={collapsed=>viewPatch(current.id,{collapsed})}/>{!current.branches.length && <div className="empty-panel"><Layers3 size={27} /><p>{t("Your questions will grow here.")}</p><span>{t("Select a passage in an answer to begin.")}</span></div>}</> : <>{(draft || branch) && <div className="source-card"><span className="eyebrow">{draft?.parentId ?? branch?.parentId ? t("PARENT ANNOTATION") : t("MAIN CONVERSATION")}</span><blockquote><PassagePreview text={draft?.anchor.quote ?? branch?.anchor.quote ?? ''}/></blockquote><button onClick={() => jumpSource(draft?.anchor ?? branch!.anchor, draft ? draft.parentId : branch!.parentId)}>{t("Jump to source")}<ArrowUp size={12} /></button></div>}{(branch||draft)&&<details className="private-note" open={!!branch?.note}><summary>{t('Private note')}</summary><p className="small muted">{t('Only saved locally. Not included in model requests.')}</p><textarea maxLength={50000} aria-label={t('Private note')} placeholder={t('Write your own understanding or questions…')} value={draft?current.view.drafts[noteDraftKey(draft!.anchor)]??'':branch?.note??''} onChange={e=>{const note=e.target.value;if(draft)setDraftText(noteDraftKey(draft.anchor),note);else if(branch)updateSession(current.id,s=>({...s,branches:s.branches.map(b=>b.id===branch.id?{...b,note}:b)}));}}/>{draft&&<button className="text-button" disabled={!current.view.drafts[noteDraftKey(draft!.anchor)]?.trim()} onClick={saveDraftNote}>{t('Save private note')}</button>}</details>}{branch && !draft && <>{branch.parentId && <button className="parent-link" onClick={() => openBranch(branch.parentId!)}><ArrowLeft size={13} />{t("Back to parent annotation")}</button>}{activeMessages(branch).map(m => card(m, branch))}{activeMessages(branch).some(m => m.role === 'assistant' && m.status === 'complete') && <button className="promote-button" onClick={() => {
+            }}><X size={18} /></button></div></header>
+      <div className="panel-scroll" ref={panelRef} onScroll={schedulePositionSave}>{panelMode === 'tree' ? <><FollowUpTree session={current} onOpen={openBranch} onCollapsed={collapsed=>viewPatch(current.id,{collapsed})}/>{!current.branches.length && <div className="empty-panel"><TreeDeciduous size={27} /><p>{t("Your questions will grow here.")}</p><span>{t("Select a passage in an answer to begin.")}</span></div>}</> : <>{(draft || branch) && <div className="source-card"><span className="eyebrow">{draft?.parentId ?? branch?.parentId ? t("PARENT ANNOTATION") : t("MAIN CONVERSATION")}</span><blockquote><PassagePreview text={draft?.anchor.quote ?? branch?.anchor.quote ?? ''}/></blockquote><button onClick={() => jumpSource(draft?.anchor ?? branch!.anchor, draft ? draft.parentId : branch!.parentId)}>{t("Jump to source")}<ArrowUp size={12} /></button></div>}{(branch||draft)&&<details className="private-note" open={!!branch?.note}><summary>{t('Note')}</summary><p className="small muted">{t('Only saved locally. Not included in model requests.')}</p><textarea maxLength={50000} aria-label={t('Note')} placeholder={t('Write your own understanding or questions…')} value={draft?current.view.drafts[noteDraftKey(draft!.anchor)]??'':branch?.note??''} onChange={e=>{const note=e.target.value;if(draft)setDraftText(noteDraftKey(draft.anchor),note);else if(branch)updateSession(current.id,s=>({...s,branches:s.branches.map(b=>b.id===branch.id?{...b,note}:b)}));}}/>{draft&&<button className="text-button" disabled={!current.view.drafts[noteDraftKey(draft!.anchor)]?.trim()} onClick={saveDraftNote}>{t('Save note')}</button>}</details>}{branch && !draft && <>{branch.parentId && <button className="parent-link" onClick={() => openBranch(branch.parentId!)}><ArrowLeft size={13} />{t("Back to parent annotation")}</button>}{activeMessages(branch).map(m => card(m, branch))}{activeMessages(branch).some(m => m.role === 'assistant' && m.status === 'complete') && <button className="promote-button" onClick={() => {
                   const answer = activeMessages(branch).filter(m => m.role === 'assistant' && m.status === 'complete').at(-1)!;
                   setPromotion({
                     branch,
@@ -769,7 +793,7 @@ export default function App() {
       setW(next);
       await bridge.saveWorkspace(next);
     }} onClose={() => {setSettings(false);setCatalogEpoch(x=>x+1);}} onNotice={notify} />}
-    {pendingDelete&&<DeleteDialog title={t(pendingDelete.messageId?'Delete answer':'Delete conversation…')} description={pendingDelete.messageId?t('Delete this answer? Its question and other messages will stay.'):t('deleteConversationPrompt',{name:w.sessions.find(s=>s.id===pendingDelete.sessionId)?.title??''})} detail={pendingDelete.messageId&&affectedBranches(w.sessions.find(s=>s.id===pendingDelete.sessionId)!,pendingDelete.messageId).size?t('deleteLinkedAnnotations',{count:n(affectedBranches(w.sessions.find(s=>s.id===pendingDelete.sessionId)!,pendingDelete.messageId).size)}):undefined} onCancel={()=>setPendingDelete(null)} onDelete={confirmDeletion}/>}
+    {pendingDelete&&<DeleteDialog title={t(pendingDelete.messageId?'Delete answer':'Delete conversation…')} description={pendingDelete.messageId?t('Delete this question and its answers? Retries in this turn and linked annotations or notes will also be deleted. Other turns and question versions stay.'):t('deleteConversationPrompt',{name:w.sessions.find(s=>s.id===pendingDelete.sessionId)?.title??''})} detail={pendingDelete.messageId&&affectedBranches(w.sessions.find(s=>s.id===pendingDelete.sessionId)!,pendingDelete.messageId).size?t('deleteLinkedAnnotations',{count:n(affectedBranches(w.sessions.find(s=>s.id===pendingDelete.sessionId)!,pendingDelete.messageId).size)}):undefined} onCancel={()=>setPendingDelete(null)} onDelete={confirmDeletion}/>}
     {renaming && <RenameDialog key={renaming.sessionId} title={renaming.title} onCancel={()=>setRenaming(null)} onSave={title=>{updateSession(renaming.sessionId,s=>({...s,title}));setRenaming(null);}}/>}
     {context && <div className="modal-backdrop"><section className="modal context-modal" role="dialog" aria-modal="true" aria-label={t("Context details")}><header><div><span className="eyebrow">{t(contextPreview?'BEFORE SENDING':'WHAT THE MODEL RECEIVED')}</span><h2>{t("Context details")}</h2></div><button className="icon-button" aria-label={t("Close context")} onClick={() => {setContext(null);setPendingSend(null);}}><X size={18} /></button></header><p>{t(context.source)}</p><p className="muted">{t('contextSize',{count:n(context.characters),budget:n(context.budget)})}</p><p className={context.summarized ? 'notice' : 'muted'}>{context.summarized ? t('abbreviationNote',{count:n(context.omittedTurns)}) : t("No history abbreviation was needed for this request.")}</p>{pendingSend&&<p className="notice">{t('Older history will be shortened for this request. Your full records stay saved. Review the excerpts before sending.')}</p>}<div className="context-list">{context.items.map((i, index) => <details key={index}><summary>{t(i.role==='user'?'You':'Assistant')} · {t('characterCount',{count:n(i.content.length)})}</summary><pre>{i.content}</pre></details>)}</div>{pendingSend&&<footer><button onClick={()=>{setContext(null);setPendingSend(null);}}>{t('Keep editing')}</button><button className="primary" onClick={()=>executeSend(pendingSend)}>{t('Send with this context')}</button></footer>}</section></div>}
     {promotion && <div className="modal-backdrop"><section className="modal" role="dialog" aria-modal="true" aria-label={t("Bring conclusion to main")}><header><h2>{t("Bring a conclusion back")}</h2><button className="icon-button" aria-label={t("Cancel conclusion")} onClick={() => setPromotion(null)}><X size={18} /></button></header><p className="muted">{t("Edit the conclusion before adding it to the main conversation. Its source stays linked.")}</p><textarea className="promotion-text" value={promotion.text} onChange={e => setPromotion({
