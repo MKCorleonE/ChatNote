@@ -71,4 +71,22 @@
 .danger-button { border-color:color-mix(in srgb,#d97979 40%,transparent); background:color-mix(in srgb,#d97979 18%,transparent); color:#e79b9b; }
 :root[data-theme=light] .danger-button,:root[data-theme=light] .session-delete:hover,:root[data-theme=light] .answer-delete:hover { color:#a74242; }
 @media(hover:none) { .answer-delete,.session-list .session-delete { opacity:1; pointer-events:auto; } }
+.under-composer.ai-notice { display:block; text-align:center; }
+.ai-notice { cursor:default; user-select:none; }
+.session-title { transition:transform .22s var(--ease-pop),background .15s; }
+.session-title:active { transform:scale(.95); }
+.rename-backdrop { z-index:90; }
+.rename-modal { width:min(420px,100%); border-radius:18px; animation:menu-spring-in .38s both; }
+.rename-body { padding:5px 24px 20px; }
+.rename-body label { display:block; font-size:11px; color:var(--muted); margin-bottom:9px; }
+.rename-body input { width:100%; border-radius:12px; }
+.rename-modal footer { justify-content:flex-end; gap:9px; }
+.annotation-hint-position { position:fixed; z-index:80; width:260px; max-width:calc(100vw - 16px); transform:translateY(-100%); pointer-events:none; }
+.annotation-hint-position.below { transform:none; }
+.annotation-hint { border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:16px; box-shadow:var(--shadow); padding:11px 14px; font-size:11px; line-height:1.6; transform-origin:bottom center; animation:menu-spring-in .38s both; }
+.annotation-hint-position.below .annotation-hint { transform-origin:top center; }
+.annotation-hint>span { color:var(--accent); font-size:10px; }
+.annotation-hint p { margin:5px 0 0; overflow-wrap:anywhere; }
+.annotation-hint.leaving { animation:menu-spring-out .13s ease-in both; }
+@media(prefers-reduced-motion:reduce) { .rename-modal,.annotation-hint,.annotation-hint.leaving { animation:none!important; } .session-title:active { transform:none; } }
 @media(prefers-reduced-motion:reduce) { .annotation-panel,.annotation-panel.leaving,.choice-menu,.choice-menu.leaving,.model-menu,.model-menu.leaving,.delete-modal { animation:none!important; } .choice-trigger:active,.model-picker-button:active { transform:none; } }

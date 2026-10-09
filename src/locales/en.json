@@ -403,5 +403,10 @@
   "deleteConversationNamed": "Delete conversation: {name}",
   "deleteLinkedAnnotations": "This answer has {count} linked annotations or notes. They and their descendants will also be deleted.",
   "Cancel": "Cancel",
-  "deleteConversationPrompt": "Delete “{name}” and all its annotations and notes?"
+  "deleteConversationPrompt": "Delete “{name}” and all its annotations and notes?",
+  "Let’s continue the main thread?": "Let’s continue the main thread?",
+  "Continue asking?": "Continue asking?",
+  "AI can make mistakes. Please check important information.": "AI can make mistakes. Please check important information.",
+  "Save name": "Save name",
+  "followUpPreviewCount": "{count} follow-up questions"
 }

@@ -5,11 +5,12 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { useI18n } from './I18nProvider';
 import { normalizeMath } from './source';
+import { AnnotationHint } from './AnnotationHint';
 import type { Branch, Message } from './types';
 interface Props {message:Message;branches:Branch[];enabled:boolean;activeId?:string|null;onOpen:(id:string)=>void;onSelectBlock?:(message:Message,start:number,end:number)=>void}
 
 export const RichText=memo(function RichText({message,branches,enabled,activeId,onOpen,onSelectBlock}:Props){
-  const {t,n}=useI18n();const normalized=useMemo(()=>normalizeMath(message.text),[message.text]);
+  const {t}=useI18n();const normalized=useMemo(()=>normalizeMath(message.text),[message.text]);
   const relevant=enabled?branches.filter(b=>b.anchor.messageId===message.id&&b.anchor.revision===message.revision):[];
   const offset=(p:number|undefined)=>p===undefined?undefined:normalized.offsets[p];
   function sourcePlugin(){return(tree:any)=>{
@@ -43,7 +44,7 @@ export const RichText=memo(function RichText({message,branches,enabled,activeId,
     }
     const points=[...new Set([0,value.length,...relevant.flatMap(b=>map.flatMap((p,i)=>p===b.anchor.start||p===b.anchor.end?[i]:[]))])].sort((a,b)=>a-b);
     return points.slice(0,-1).map((p,i)=>{const q=points[i+1],hits=relevant.filter(b=>b.anchor.start<map[q]&&b.anchor.end>map[p]);const part=value.slice(p,q);
-      return <span key={p} data-source-start={map[p]} data-source-end={map[q]} data-source-map={map.slice(p,q+1).join(',')}>{hits.length?<mark role="button" tabIndex={0} className={hits.some(b=>b.id===activeId)?'active':''} title={t('annotationPreview',{count:n(hits.length),question:hits[0].messages.find(m=>m.role==='user')?.text??t('Open annotation')})} onClick={()=>onOpen(hits[0].id)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onOpen(hits[0].id);}}}>{part}</mark>:part}</span>;
+      return <span key={p} data-source-start={map[p]} data-source-end={map[q]} data-source-map={map.slice(p,q+1).join(',')}>{hits.length?<AnnotationHint branches={hits}>{hintProps=><mark {...hintProps} role="button" tabIndex={0} className={hits.some(b=>b.id===activeId)?'active':''} onClick={()=>onOpen(hits[0].id)} onKeyDown={e=>{hintProps.onKeyDown?.(e);if(e.key==='Enter'||e.key===' '){e.preventDefault();onOpen(hits[0].id);}}}>{part}</mark>}</AnnotationHint>:part}</span>;
     });
   }
   return <div className="rich-text" data-message-id={message.id} data-revision={message.revision}><Markdown remarkPlugins={[remarkGfm,remarkMath]} rehypePlugins={[sourcePlugin,[rehypeKatex,{strict:'ignore',trust:false}]]} components={{
@@ -53,7 +54,8 @@ export const RichText=memo(function RichText({message,branches,enabled,activeId,
       const hits=relevant.filter(b=>start!==undefined&&b.anchor.start<end&&b.anchor.end>start);
       const available=enabled&&message.status!=='streaming'&&start!==undefined;
       const annotate=()=>hits.length?onOpen(hits[0].id):onSelectBlock?.(message,start,end);
-      return <span className={`formula-source ${node?.properties?.display?'formula-display':''} ${hits.length?'annotated':''}`} role={available?'group':undefined} aria-label={available?t('Formula'):undefined} tabIndex={available?0:undefined} onKeyDown={e=>{if(available&&e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();annotate();}}} data-source-atomic="true" data-source-start={start} data-source-end={end}>{children}{available&&<button type="button" className="formula-action" aria-label={t('Annotate formula')} onClick={annotate}>{t('Annotate formula')}</button>}</span>;
+      const formula=(hintProps:import('react').HTMLAttributes<HTMLElement>={})=><span {...hintProps} className={`formula-source ${node?.properties?.display?'formula-display':''} ${hits.length?'annotated':''}`} role={available?'group':undefined} aria-label={available?t('Formula'):undefined} tabIndex={available?0:undefined} onKeyDown={e=>{hintProps.onKeyDown?.(e);if(available&&e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();annotate();}}} data-source-atomic="true" data-source-start={start} data-source-end={end}>{children}{available&&<button type="button" className="formula-action" aria-label={t('Annotate formula')} onClick={annotate}>{t('Annotate formula')}</button>}</span>;
+      return hits.length?<AnnotationHint branches={hits}>{formula}</AnnotationHint>:formula();
     },
     pre:({children,node}:any)=>{if(node?.children?.[0]?.tagName==='source-formula')return <div className="math-block">{children}</div>;const start=offset(node?.position?.start?.offset),end=offset(node?.position?.end?.offset);const code=node?.children?.[0],label=code?.properties?.className?.find((c:string)=>c.startsWith('language-'))?.slice(9)??t('Code');return <div className="code-block"><div className="code-toolbar"><span>{label}</span><div><button onClick={()=>void navigator.clipboard?.writeText(message.text.slice(start??0,end??message.text.length).replace(/^ {0,3}(`{3,}|~{3,})[^\n]*\n/,'').replace(/\n {0,3}(`{3,}|~{3,})\s*$/,''))}>{t('Copy code')}</button>{enabled&&message.status!=='streaming'&&start!==undefined&&<button onClick={()=>onSelectBlock?.(message,start,end!)}>{t('Annotate code')}</button>}</div></div><pre>{children}</pre></div>;},
     a:({href,children}:any)=><a href={href} target="_blank" rel="noreferrer">{children}</a>,

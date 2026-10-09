@@ -403,5 +403,10 @@
   "deleteConversationNamed": "刪除對話：{name}",
   "deleteLinkedAnnotations": "這則回答關聯了 {count} 個追問或筆記，它們及其下級內容也會一併刪除。",
   "Cancel": "取消",
-  "deleteConversationPrompt": "刪除「{name}」及其全部追問與筆記？"
+  "deleteConversationPrompt": "刪除「{name}」及其全部追問與筆記？",
+  "Let’s continue the main thread?": "讓我們繼續主線？",
+  "Continue asking?": "繼續追問？",
+  "AI can make mistakes. Please check important information.": "AI可能會出錯，請檢查重要資訊",
+  "Save name": "儲存名稱",
+  "followUpPreviewCount": "{count} 次追問"
 }

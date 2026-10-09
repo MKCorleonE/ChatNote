@@ -403,5 +403,10 @@
   "deleteConversationNamed": "删除会话：{name}",
   "deleteLinkedAnnotations": "这条回答关联了 {count} 个追问或笔记，它们及其下级内容也会一并删除。",
   "Cancel": "取消",
-  "deleteConversationPrompt": "删除“{name}”及其全部追问和笔记？"
+  "deleteConversationPrompt": "删除“{name}”及其全部追问和笔记？",
+  "Let’s continue the main thread?": "让我们继续主线？",
+  "Continue asking?": "继续追问？",
+  "AI can make mistakes. Please check important information.": "AI可能会出错，请检查重要信息",
+  "Save name": "保存名称",
+  "followUpPreviewCount": "{count} 次追问"
 }
