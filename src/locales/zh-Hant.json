@@ -443,5 +443,9 @@
   "Context previews open with or without a draft and never send a model request.": "有無草稿均可預覽上下文，不傳送模型請求。",
   "Spring menus across appearance, models, connections and more actions; click outside to dismiss.": "外觀、模型、連線與更多操作統一彈性選單，點擊外部即可收起。",
   "Rounded notes and ambient lighting with a capsule switch, RGB sliders and default color reset.": "圓角筆記與氛圍燈，膠囊開關、RGB 調色滑桿及預設顏色恢復。",
-  "Six highlighter colors and linear opacity apply equally to annotated text and formulas.": "六種螢光筆顏色與線性不透明度統一套用於文字及公式批註。"
+  "Six highlighter colors and linear opacity apply equally to annotated text and formulas.": "六種螢光筆顏色與線性不透明度統一套用於文字及公式批註。",
+  "Forest & exploration identity": "森林與探索的新圖示",
+  "Adopted the five staggered outline trees and winding exploration thread selected by the author.": "採用作者選定的五棵錯落輪廓樹與蜿蜒探索主線圖示。",
+  "Updated application, Windows installer, startup, welcome, about and browser tab icons.": "同步應用程式、Windows 安裝程式、啟動頁、歡迎頁、關於及瀏覽器分頁圖示。",
+  "Prepared icon sizes for other platforms; Windows remains the delivered platform.": "預備其他平台的圖示尺寸；本次仍僅交付 Windows。"
 }

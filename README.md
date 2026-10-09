@@ -20,18 +20,18 @@ ChatNote 是独立的跨平台 AI 对话与笔记软件项目，目标平台为 
 
 v0.3.0 扩大代码/公式/格式选区，补齐常见公式写法，新增私人批注笔记、发送前上下文确认和回答状态小字，并完善阅读位置与会话续期提示。
 
-Windows v0.7.0：问答成对删除、上下文预览修复、精简追问树与返回概览/原文精准定位，统一 Q 弹菜单、圆角笔记和胶囊氛围灯设置，新增六色文字/公式统一高光。现有对话、锚点、笔记、草稿、连接与凭据保留。
+Windows v0.7.1：采用作者选定的五棵错落轮廓树与蜿蜒探索主线图标，软件、安装包、启动/欢迎/关于页面和浏览器标签同步。0.7.0 的对话、批注与菜单功能保留；会话、锚点、草稿、连接和凭据不重置。
 
-- [v0.7.0 Windows 安装包](https://github.com/MKCorleonE/ChatNote/releases/download/v0.7.0/ChatNote_0.7.0_x64-setup.exe)
-- [v0.7.0 可直接启动的程序](https://github.com/MKCorleonE/ChatNote/releases/download/v0.7.0/ChatNote_0.7.0.exe)
-- [v0.7.0 使用与验证](docs/V0.7.0_VALIDATION.md)
+- [v0.7.1 Windows 安装包](https://github.com/MKCorleonE/ChatNote/releases/download/v0.7.1/ChatNote_0.7.1_x64-setup.exe)
+- [v0.7.1 可直接启动的程序](https://github.com/MKCorleonE/ChatNote/releases/download/v0.7.1/ChatNote_0.7.1.exe)
+- [v0.7.1 使用与验证](docs/V0.7.1_VALIDATION.md)
 - [版本保留规则](docs/RELEASE_POLICY.md)
 - [国际化维护说明](docs/INTERNATIONALIZATION.md)
 - [v0.1.0 基线验证](docs/BUILD_AND_VALIDATION.md)
 
-0.7.0 细节修改、验证和限制见 [本版验证](docs/V0.7.0_VALIDATION.md)。96 项前端及 21 项常规原生检查通过；本版安装升级、真实调用与日常手感仍待用户验收。
+0.7.1 图标升级、验证和限制见 [本版验证](docs/V0.7.1_VALIDATION.md)。96 项前端及 21 项常规原生检查通过；本版安装升级、真实调用与日常手感仍待用户验收。
 
-升级时先关闭旧版及开发预览/启动服务，再启动新版或安装，无需退出账号。常用目录保留 0.7.0 与 0.6.0，0.5.0 及更早交付归档保留；原对话、锚点、草稿、连接与凭据保留。私有下载需要仓库权限。
+升级时先关闭旧版及开发预览/启动服务，再启动新版或安装，无需退出账号。常用目录保留 0.7.1 与 0.7.0，0.6.0 及更早交付归档保留；原对话、锚点、草稿、连接与凭据保留。私有下载需要仓库权限。
 
 小改动继续先开发预览，再积累发布：双击 [启动开发预览.cmd](启动开发预览.cmd)，默认沿用工作区与登录。[开发说明](docs/DEVELOPMENT_PREVIEW.md)。
 
