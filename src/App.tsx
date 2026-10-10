@@ -1,4 +1,5 @@
 import appIcon from '../app-icon.png';
+import { useTheme } from './useTheme';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { ArrowDownToLine, ArrowLeft, ArrowUp, BookOpen, Check, ChevronDown, Copy, FilePlus2, TreeDeciduous, Menu, MessageSquare, MoreHorizontal, NotebookText, Pin, PinOff, Plus, Search, Settings as SettingsIcon, Square, Trash2, X } from 'lucide-react';
 import * as bridge from './bridge';
@@ -46,6 +47,7 @@ export default function App() {
     [loadError, setLoadError] = useState(''),
     [saved, setSaved] = useState('Opening local records…');
   const language = resolveLanguage(w?.settings.language);
+  useTheme(w?.settings);
   const [catalogEpoch, setCatalogEpoch] = useState(0);
   const [viewport, setViewport] = useState(() => window.innerWidth);
   useEffect(() => { const resize = () => setViewport(window.innerWidth); window.addEventListener('resize', resize); return () => window.removeEventListener('resize', resize); }, []);
@@ -151,7 +153,6 @@ export default function App() {
   }, []);
   useEffect(() => {
     if (!w) return;
-    document.documentElement.dataset.theme = w.settings.theme;
     const version = ++saveVersion.current;
     setSaved('Saving…');
     if (saveTimer.current) clearTimeout(saveTimer.current);

@@ -8,6 +8,15 @@ const fake=vi.hoisted(()=>({keys:new Map<string,{key:string;endpoint:string}>(),
 vi.mock('./bridge',()=>({desktop:true,profileStatus:async(p:ConnectionProfile)=>({hasKey:fake.keys.has(p.id),endpointMatches:!fake.keys.has(p.id)||fake.keys.get(p.id)!.endpoint===p.endpoint,connected:p.provider==='chatgpt'||fake.keys.has(p.id),planUsage:p.provider==='chatgpt',email:p.provider==='chatgpt'?'test@example.invalid':undefined}),setKey:async(provider:string,key:string,endpoint:string,id:string)=>{fake.setKey(provider,key,endpoint,id);if(key)fake.keys.set(id,{key,endpoint});else fake.keys.delete(id);},models:(...args:unknown[])=>fake.models(...args),usage:(...args:unknown[])=>fake.usage(...args),generate:fake.generate,openUrl:vi.fn(),signIn:fake.signIn,cancelSignIn:fake.cancelSignIn,checkSignInService:fake.checkSignInService,signOut:vi.fn()}));
 import Settings from './Settings';
 
+test('Follow system saves a compatible fallback and switching to an explicit theme clears it without inference',async()=>{
+  const saved=vi.fn(),user=userEvent.setup();render(<Settings value={migrateConnections(defaultSettings)} onChange={saved} onClose={()=>{}} onNotice={()=>{}}/>);
+  await user.click(screen.getByRole('button',{name:'Appearance'}));await user.click(screen.getByRole('combobox',{name:'Theme'}));
+  await user.click(screen.getByRole('option',{name:'Follow system'}));await user.click(screen.getByRole('button',{name:'Done'}));
+  await waitFor(()=>expect(saved.mock.calls.at(-1)?.[0].followSystemTheme).toBe(true));expect(['dark','light']).toContain(saved.mock.calls.at(-1)![0].theme);
+  await user.click(screen.getByRole('combobox',{name:'Theme'}));await user.click(screen.getByRole('option',{name:'Light'}));await user.click(screen.getByRole('button',{name:'Done'}));
+  await waitFor(()=>expect(saved.mock.calls.at(-1)?.[0].followSystemTheme).toBe(false));expect(saved.mock.calls.at(-1)![0].theme).toBe('light');expect(fake.generate).not.toHaveBeenCalled();
+});
+
 test('Appearance choices, RGB reset, capsule switch and annotation style save as metadata without inference',async()=>{
   const user=userEvent.setup(),saved=vi.fn(),value=migrateConnections({...defaultSettings,composerGlow:{enabled:true,colorA:'#123456',colorB:'#654321',brightness:60,seconds:9}});
   render(<Settings value={value} onChange={saved} onClose={()=>{}} onNotice={()=>{}}/>);await user.click(screen.getByRole('button',{name:'Appearance'}));

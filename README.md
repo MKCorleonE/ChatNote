@@ -33,6 +33,8 @@ Windows v0.7.1：采用作者选定的五棵错落轮廓树与蜿蜒探索主线
 
 升级时先关闭旧版及开发预览/启动服务，再启动新版或安装，无需退出账号。常用目录保留 0.7.1 与 0.7.0，0.6.0 及更早交付归档保留；原对话、锚点、草稿、连接与凭据保留。私有下载需要仓库权限。
 
+当前新预览：图标透明圆角＋跟随系统主题，保持 0.7.1 基线，不发新正式版。[本轮说明](docs/PREVIEW_ROUNDED_ICON_SYSTEM_THEME.md)。
+
 小改动继续先开发预览，再积累发布：双击 [启动开发预览.cmd](启动开发预览.cmd)，默认沿用工作区与登录。[开发说明](docs/DEVELOPMENT_PREVIEW.md)。
 
 命令行桌面预览：`npm run desktop:dev`；浏览器界面预览：`npm run dev`；界面测试为 `npm test`；桌面构建为 `npm run desktop:build`。`prototype` 目录保留早期独立演示。
