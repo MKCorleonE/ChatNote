@@ -17,6 +17,8 @@ pub struct Request {
     profile_id: Option<String>,
     #[serde(default)]
     reasoning_effort: Option<String>,
+    #[serde(default)]
+    image_input: bool,
 }
 #[derive(Clone, Serialize)]
 pub struct StreamEvent {
@@ -372,7 +374,7 @@ pub fn cancel_generation(state: State<Runtime>, request_id: String) -> Result<()
 #[tauri::command]
 pub async fn generate(
     state: State<'_, Runtime>,
-    request: Request,
+    mut request: Request,
     on_event: Channel<StreamEvent>,
 ) -> Result<(), String> {
     if request.model.trim().is_empty()
@@ -385,6 +387,12 @@ pub async fn generate(
         return Err("Invalid model request".into());
     }
     let base = endpoint(&request.provider, &request.endpoint)?;
+    request.input = crate::media::materialize(
+        &request.input,
+        &request.provider,
+        request.image_input,
+        &state,
+    )?;
     let body = request_body(&request)?;
     let (cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
     {
@@ -632,6 +640,7 @@ mod tests {
             instructions: "Be clear".into(),
             profile_id: None,
             reasoning_effort: effort.map(str::to_owned),
+            image_input: false,
         }
     }
     #[test]

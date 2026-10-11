@@ -1,4 +1,5 @@
 mod auth;
+mod media;
 mod network;
 #[cfg(test)]
 mod profile_tests;
@@ -57,7 +58,10 @@ pub fn run() {
             network::list_models,
             network::generate,
             network::cancel_generation,
-            usage::connection_usage
+            usage::connection_usage,
+            media::store_attachment,
+            media::read_attachment,
+            media::transcribe
         ])
         .run(tauri::generate_context!())
         .expect("Could not start ChatNote. Your saved database has not been replaced.");
