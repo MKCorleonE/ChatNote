@@ -1,6 +1,6 @@
 [package]
 name = "chatnote"
-version = "0.7.1"
+version = "0.8.0"
 description = "A quieter space for deeper questions"
 authors = ["ChatNote"]
 edition = "2021"

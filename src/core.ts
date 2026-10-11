@@ -3,6 +3,7 @@ import { migrateConnections } from './connections';
 import { resolveLanguage, translator, type Language } from './i18n';
 import { highlighterColors } from './annotation-style';
 import { efforts } from './composer-options';
+import { validateAttachment } from './attachments';
 import { activeMessages, sessionMessages, threadMessages, threadPaths } from './message-history';
 export const uid = () => crypto.randomUUID();
 export const defaultSettings = { provider: 'openai' as const, endpoint: 'https://api.openai.com/v1', model: '', language:'en' as Language, fontSize: 15, annotations: true, theme: 'dark' as const, contextBudget: 48000 };
@@ -19,13 +20,13 @@ export function snapshot(session: Session, parentId: string | null, anchor: Anch
   const end = source.findIndex(m => m.id === anchor.messageId && m.revision === anchor.revision);
   const parent = parentId ? session.branches.find(b => b.id === parentId) : undefined;
   const inherited = parent ? [...parent.sourceContext, { role: 'user' as const, content: `Parent annotation source: ${parent.anchor.quote}` }] : [];
-  return [...inherited, ...source.slice(0, end + 1).filter(m => m.status === 'complete' || m.status === 'stopped').map(m => ({ role: m.role, content: m.text }))];
+  return [...inherited, ...source.slice(0, end + 1).filter(m => m.status === 'complete' || m.status === 'stopped').map(m => ({ role: m.role, content: m.text, ...(m.attachments?.length?{attachments:m.attachments}:{}) }))];
 }
 export function contextFor(session: Session, branch: Branch | null, budget = 48000): ContextReport {
-  const turns = activeMessages(branch ?? session).filter(m => m.role === 'user' || m.status === 'complete').map(m => ({ role: m.role, content: m.text }));
+  const turns = activeMessages(branch ?? session).filter(m => m.role === 'user' || m.status === 'complete').map(m => ({ role: m.role, content: m.text, ...(m.attachments?.length?{attachments:m.attachments}:{}) }));
   const history = branch ? [...branch.sourceContext, ...turns] : turns;
   const quote: ContextItem[] = branch ? [{ role: 'user', content: `This is a passage-anchored follow-up. Answer the current question about this exact source.\n\n<source>\n${branch.anchor.quote}\n</source>` }] : [];
-  const size = (xs: ContextItem[]) => xs.reduce((n, i) => n + i.content.length, 0);
+  const size = (xs: ContextItem[]) => xs.reduce((n, i) => n + i.content.length + (i.attachments??[]).reduce((a,f)=>a+(f.kind==='text'?f.size:0),0), 0);
   const source = branch ? 'Source snapshot + this annotation only' : 'Main conversation only';
   if (size([...quote, ...history]) <= budget) return { source, characters: size([...quote, ...history]), budget, summarized: false, omittedTurns: 0, items: [...quote, ...history] };
   // Never pretend that an extract is a semantic summary; label it and preserve full originals locally.
@@ -41,8 +42,10 @@ export function contextFor(session: Session, branch: Branch | null, budget = 480
 }
 export function validateWorkspace(data: unknown): asserts data is Workspace {
   const w = data as Workspace;
+  const checkAttachments=(items:unknown)=>{if(items!==undefined&&(!Array.isArray(items)||items.length>8||items.some(a=>!validateAttachment(a))))throw new Error('Invalid attachment metadata.');};
   if (!w || w.version !== 1 || !Array.isArray(w.sessions) || w.sessions.length === 0 || w.sessions.length > 2000) throw new Error('This file is not a supported ChatNote backup.');
   if(w.settings?.language!==undefined && typeof w.settings.language!=='string') throw new Error('Invalid settings.');
+  if(w.settings?.followSystemTheme!==undefined&&typeof w.settings.followSystemTheme!=='boolean')throw new Error('Invalid settings.');
   if(w.settings?.historyPinned!==undefined&&typeof w.settings.historyPinned!=='boolean')throw new Error('Invalid settings.');
   if(w.settings?.panelWidth!==undefined && (!Number.isFinite(w.settings.panelWidth)||w.settings.panelWidth<300||w.settings.panelWidth>760))throw new Error('Invalid panel width.');
   const highlight=w.settings?.annotationHighlight;
@@ -50,6 +53,9 @@ export function validateWorkspace(data: unknown): asserts data is Workspace {
   const glow=w.settings?.composerGlow;
   if(glow && (typeof glow.enabled!=='boolean'||!/^#[0-9a-f]{6}$/i.test(glow.colorA)||!/^#[0-9a-f]{6}$/i.test(glow.colorB)||!Number.isFinite(glow.seconds)||glow.seconds<2||glow.seconds>20||!Number.isFinite(glow.brightness)||glow.brightness<0||glow.brightness>100))throw new Error('Invalid input glow.');
   for(const p of w.settings?.profiles??[])if(p.reasoningEffort!==undefined&&!efforts.includes(p.reasoningEffort))throw new Error('Invalid reasoning effort.');
+  for(const p of w.settings?.profiles??[])if((p.imageInput!==undefined&&typeof p.imageInput!=='boolean')||(p.transcriptionModel!==undefined&&(typeof p.transcriptionModel!=='string'||p.transcriptionModel.length>150)))throw new Error('Invalid media settings.');
+  if(w.settings?.welcomeVersion!==undefined&&typeof w.settings.welcomeVersion!=='string')throw new Error('Invalid welcome version.');
+  if(w.settings?.voiceProfileId!==undefined&&typeof w.settings.voiceProfileId!=='string')throw new Error('Invalid voice connection.');
   const catalogs=w.settings?.modelCatalogs;
   if(catalogs){if(typeof catalogs!=='object'||Array.isArray(catalogs)||Object.keys(catalogs).length>50)throw new Error('Invalid model catalogs.');for(const c of Object.values(catalogs)){if(!c||!['openai','chatgpt','compatible'].includes(c.provider)||typeof c.endpoint!=='string'||!Number.isFinite(c.updatedAt)||!Array.isArray(c.models)||c.models.length>1000||c.models.some(m=>!m||typeof m.id!=='string'||typeof m.name!=='string'||(m.reasoningEfforts!==undefined&&(!Array.isArray(m.reasoningEfforts)||m.reasoningEfforts.some(e=>!efforts.includes(e))))))throw new Error('Invalid model catalog.');}}
   const all = new Set<string>();
@@ -64,6 +70,7 @@ export function validateWorkspace(data: unknown): asserts data is Workspace {
         for (const m of path) {
           if (!m || typeof m.id !== 'string' || ids.has(m.id) || typeof m.revision !== 'string' || typeof m.text !== 'string' || (m.questionGroupId!==undefined&&typeof m.questionGroupId!=='string') || !['user', 'assistant'].includes(m.role) || !['complete','streaming','stopped','error'].includes(m.status)) throw new Error('Invalid message.');
           ids.add(m.id);
+          checkAttachments(m.attachments);for(const item of m.context?.items??[])checkAttachments(item.attachments);
           if (owners.has(m.id) && owners.get(m.id) !== thread.id) throw new Error('Invalid message.');
           owners.set(m.id, thread.id);
           const key = JSON.stringify([m.id, m.revision]), value = JSON.stringify(m);
@@ -74,6 +81,8 @@ export function validateWorkspace(data: unknown): asserts data is Workspace {
       }
     }
     for(const b of s.branches)if(b.note!==undefined&&(typeof b.note!=='string'||b.note.length>50000))throw new Error('Invalid private note.');
+    for(const b of s.branches)for(const item of b.sourceContext??[])checkAttachments(item.attachments);
+    if(s.view?.attachmentDrafts){if(typeof s.view.attachmentDrafts!=='object'||Array.isArray(s.view.attachmentDrafts))throw new Error('Invalid attachment drafts.');for(const items of Object.values(s.view.attachmentDrafts))checkAttachments(items);}
     const draft=s.view?.draftSource;if(draft&&(!draft.anchor||!validAnchor(s,draft.anchor)||(draft.parentId===null?!threadMessages(s).some(m=>m.id===draft.anchor.messageId):!s.branches.some(b=>b.id===draft.parentId&&threadMessages(b).some(m=>m.id===draft.anchor.messageId)))))throw new Error('Invalid draft source.');
     const branchIds = new Set<string>();
     for (const b of s.branches) { if (!b || typeof b.id !== 'string' || branchIds.has(b.id) || !Array.isArray(b.messages) || !Array.isArray(b.sourceContext) || b.sourceContext.some(i => !i || !['user','assistant'].includes(i.role) || typeof i.content !== 'string') || !b.anchor || !validAnchor(s, b.anchor)) throw new Error('A saved annotation has an invalid source.'); branchIds.add(b.id); }

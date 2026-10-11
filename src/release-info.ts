@@ -2,7 +2,17 @@ import manifest from '../package.json';
 
 export const appVersion = manifest.version;
 export const releaseEntries = [
-  { version: appVersion, date: '2026-10-09', title: 'Forest & exploration identity', changes: [
+  { version: appVersion, date: '2026-10-11', title: 'Learning paths, materials & offline notebooks', changes: [
+    'Integrated window controls remove the mismatched native title bar.',
+    'Local attachments support text, vision images and OpenAI document inputs, with portable backups.',
+    'Record, pause, transcribe and either review or send; speech uses an API-key provider.',
+    'Question-first path directory and expanded main-line trail preserve exact sources and saved versions.',
+    'Five-step welcome guide appears on first launch and after each version upgrade.',
+    'Export self-contained offline learning notebooks, optionally organized by the selected model.',
+    'Math delimiter normalization and readable fallbacks prevent malformed formulas from swallowing prose.',
+    'Existing conversations, passage anchors, connections and sign-in storage are preserved.',
+  ] },
+  { version: '0.7.1', date: '2026-10-09', title: 'Forest & exploration identity', changes: [
     'Adopted the five staggered outline trees and winding exploration thread selected by the author.',
     'Updated application, Windows installer, startup, welcome, about and browser tab icons.',
     'Prepared icon sizes for other platforms; Windows remains the delivered platform.',

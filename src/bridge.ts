@@ -3,6 +3,9 @@ import type { Connection, ConnectionProfile, Generation, Model, ProfileStatus, S
 import { recoverWorkspace, validateWorkspace } from './core';
 import { migrateConnections } from './connections';
 import type { Language } from './i18n';
+import type { Attachment } from './types';
+import { sessionMessages } from './message-history';
+import { maxAttachmentBytes, validateAttachment } from './attachments';
 export const desktop = isTauri();
 const browserKey = 'chatnote-workspace-v1';
 let queue: Promise<void> = Promise.resolve();
@@ -10,7 +13,7 @@ const transientKeys: Record<string, string> = {};
 export async function loadWorkspace(): Promise<Workspace | null> {
   let raw: string | null;
   if (desktop) raw = await invoke<string | null>('load_workspace');
-  else raw = await new Promise<string | null>((resolve, reject) => { const r = indexedDB.open('chatnote', 1); r.onupgradeneeded = () => r.result.createObjectStore('workspace'); r.onerror = () => reject(new Error('Cannot open browser storage.')); r.onsuccess = () => { const db = r.result; const q = db.transaction('workspace').objectStore('workspace').get(browserKey); q.onsuccess = () => { resolve(q.result ?? null); db.close(); }; q.onerror = () => { reject(new Error('Cannot read browser storage.')); db.close(); }; }; });
+  else raw = await new Promise<string | null>((resolve, reject) => { const r = indexedDB.open('chatnote', 2); r.onupgradeneeded = () => {if(!r.result.objectStoreNames.contains('workspace'))r.result.createObjectStore('workspace');if(!r.result.objectStoreNames.contains('attachments'))r.result.createObjectStore('attachments');}; r.onerror = () => reject(new Error('Cannot open browser storage.')); r.onsuccess = () => { const db = r.result; const q = db.transaction('workspace').objectStore('workspace').get(browserKey); q.onsuccess = () => { resolve(q.result ?? null); db.close(); }; q.onerror = () => { reject(new Error('Cannot read browser storage.')); db.close(); }; }; });
   if (!raw) return null;
   const data = JSON.parse(raw); validateWorkspace(data); const info=desktop?await connection().catch(()=>null):null;data.settings=migrateConnections(data.settings,info?.legacyCompatibleEndpoint);return recoverWorkspace(data);
 }
@@ -18,7 +21,7 @@ export function saveWorkspace(w: Workspace): Promise<void> {
   const raw = JSON.stringify(w);
   queue = queue.catch(() => {}).then(async () => {
     if (desktop) return invoke<void>('save_workspace', { payload: raw });
-    return new Promise<void>((resolve, reject) => { const r = indexedDB.open('chatnote', 1); r.onupgradeneeded = () => r.result.createObjectStore('workspace'); r.onerror = () => reject(new Error('Cannot save in this browser. Export a backup.')); r.onsuccess = () => { const db = r.result, tx = db.transaction('workspace', 'readwrite'); tx.objectStore('workspace').put(raw, browserKey); tx.oncomplete = () => { resolve(); db.close(); }; tx.onerror = () => { reject(new Error('Saving failed. Export a backup.')); db.close(); }; }; });
+    return new Promise<void>((resolve, reject) => { const r = indexedDB.open('chatnote', 2); r.onupgradeneeded = () => {if(!r.result.objectStoreNames.contains('workspace'))r.result.createObjectStore('workspace');if(!r.result.objectStoreNames.contains('attachments'))r.result.createObjectStore('attachments');}; r.onerror = () => reject(new Error('Cannot save in this browser. Export a backup.')); r.onsuccess = () => { const db = r.result, tx = db.transaction('workspace', 'readwrite'); tx.objectStore('workspace').put(raw, browserKey); tx.oncomplete = () => { resolve(); db.close(); }; tx.onerror = () => { reject(new Error('Saving failed. Export a backup.')); db.close(); }; }; });
   }); return queue;
 }
 export async function connection(): Promise<Connection> { return desktop ? invoke<Connection>('connection_status') : { apiKey: !!transientKeys.openai, compatibleKey: !!transientKeys.compatible, chatgpt: false }; }
@@ -41,5 +44,21 @@ export async function generate(req: Generation, onEvent: (event: StreamEvent) =>
 }
 export async function saveFile(name: string, content: string) {
   if (desktop) { const { save } = await import('@tauri-apps/plugin-dialog'); const { writeTextFile } = await import('@tauri-apps/plugin-fs'); const path = await save({ defaultPath: name }); if (path) await writeTextFile(path, content); return !!path; }
-  const blob = new Blob([content], { type: name.endsWith('.json') ? 'application/json' : 'text/markdown;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 10000); return true;
+  const blob = new Blob([content], { type: name.endsWith('.json') ? 'application/json' : name.endsWith('.html') ? 'text/html;charset=utf-8' : 'text/markdown;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 10000); return true;
 }
+export interface StoredAttachment { attachment:Attachment; data:string }
+async function browserAttachment(id:string, record?:StoredAttachment):Promise<StoredAttachment> {
+  return new Promise((resolve,reject)=>{const request=indexedDB.open('chatnote',2);request.onupgradeneeded=()=>{for(const name of ['workspace','attachments'])if(!request.result.objectStoreNames.contains(name))request.result.createObjectStore(name);};request.onerror=()=>reject(new Error('Could not open local attachments'));request.onsuccess=()=>{const db=request.result,tx=db.transaction('attachments',record?'readwrite':'readonly'),store=tx.objectStore('attachments'),read=store.get(id);let value:StoredAttachment|undefined;read.onsuccess=()=>{value=read.result;if(record){if(value&&JSON.stringify(value)!==JSON.stringify(record)){tx.abort();return;}store.put(record,id);value=record;}};tx.oncomplete=()=>{db.close();value?resolve(value):reject(new Error('A local attachment is missing. Attach the original file again.'));};tx.onabort=tx.onerror=()=>{db.close();reject(new Error('Could not save attachment; the existing file was preserved.'));};};});
+}
+export async function storeAttachment(record:StoredAttachment) {
+  if(!validateAttachment(record.attachment)||record.data.length>Math.ceil(maxAttachmentBytes*4/3)+4)throw new Error('Choose a supported file under 10 MB.');
+  try {const decoded=atob(record.data);if(decoded.length!==record.attachment.size)throw new Error();if(record.attachment.kind==='text')new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(decoded,c=>c.charCodeAt(0)));}catch{throw new Error('Invalid attachment encoding or size.');}
+  if(desktop)await invoke('store_attachment',{...record});else await browserAttachment(record.attachment.id,record);
+}
+export async function readAttachment(id:string):Promise<StoredAttachment> {return desktop?invoke('read_attachment',{id}):browserAttachment(id);}
+export function fileBase64(file:Blob):Promise<string> {return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error('Could not read the selected file'));reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.readAsDataURL(file);});}
+export function referencedAttachments(w:Workspace):Attachment[] {const records=new Map<string,Attachment>();const collect=(items:Attachment[]|undefined)=>{for(const a of items??[])records.set(a.id,a);};for(const s of w.sessions){for(const m of sessionMessages(s)){collect(m.attachments);for(const item of m.context?.items??[])collect(item.attachments);}for(const b of s.branches)for(const item of b.sourceContext)collect(item.attachments);for(const list of Object.values(s.view.attachmentDrafts??{}))collect(list);}return [...records.values()];}
+export async function backupWorkspace(w:Workspace) {const bundledAttachments=[];for(const a of referencedAttachments(w))bundledAttachments.push(await readAttachment(a.id));return {...w,bundledAttachments};}
+export async function restoreAttachments(w:Workspace & {bundledAttachments?:StoredAttachment[]}) {const references=referencedAttachments(w);if(w.bundledAttachments!==undefined&&(!Array.isArray(w.bundledAttachments)||w.bundledAttachments.length>2000))throw new Error('Invalid attachment backup');for(const a of references){const record=w.bundledAttachments?.find(r=>r.attachment?.id===a.id);if(record){if(JSON.stringify(record.attachment)!==JSON.stringify(a))throw new Error('Invalid attachment backup');await storeAttachment(record);}else await readAttachment(a.id);}delete w.bundledAttachments;}
+export async function transcribe(profile:ConnectionProfile,blob:Blob):Promise<string> {if(!desktop)throw new Error('Speech transcription is available in the desktop app.');return invoke('transcribe',{provider:profile.provider,endpoint:profile.endpoint,profileId:profile.id,model:profile.transcriptionModel?.trim()||'gpt-transcribe',data:await fileBase64(blob),mime:blob.type});}
+export async function downloadAttachment(attachment:Attachment){const record=await readAttachment(attachment.id),bytes=Uint8Array.from(atob(record.data),c=>c.charCodeAt(0));if(desktop){const {save}=await import('@tauri-apps/plugin-dialog'),{writeFile}=await import('@tauri-apps/plugin-fs');const path=await save({defaultPath:attachment.name});if(path)await writeFile(path,bytes);}else{const url=URL.createObjectURL(new Blob([bytes],{type:attachment.mime})),link=document.createElement('a');link.href=url;link.download=attachment.name;link.click();setTimeout(()=>URL.revokeObjectURL(url),10000);}}

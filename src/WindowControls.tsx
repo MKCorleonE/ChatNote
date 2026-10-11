@@ -1,0 +1,4 @@
+import { Minus, Square, X } from 'lucide-react';
+import { desktop } from './bridge';
+import { useI18n } from './I18nProvider';
+export function WindowControls(){const {t}=useI18n();if(!desktop)return null;async function action(name:'minimize'|'toggleMaximize'|'close'){const {getCurrentWindow}=await import('@tauri-apps/api/window');await getCurrentWindow()[name]();}return <div className="window-controls"><button className="icon-button" aria-label={t('Minimize window')} onClick={()=>void action('minimize')}><Minus size={15}/></button><button className="icon-button" aria-label={t('Maximize or restore window')} onClick={()=>void action('toggleMaximize')}><Square size={12}/></button><button className="icon-button window-close" aria-label={t('Close window')} onClick={()=>void action('close')}><X size={16}/></button></div>;}

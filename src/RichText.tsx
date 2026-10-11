@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { useI18n } from './I18nProvider';
-import { normalizeMath } from './source';
+import { guardMath, mathFallback, normalizeMath } from './source';
 import { AnnotationHint } from './AnnotationHint';
 import type { Branch, Message } from './types';
 interface Props {message:Message;branches:Branch[];enabled:boolean;activeId?:string|null;onOpen:(id:string)=>void;onSelectBlock?:(message:Message,start:number,end:number)=>void}
@@ -47,7 +47,7 @@ export const RichText=memo(function RichText({message,branches,enabled,activeId,
       return <span key={p} data-source-start={map[p]} data-source-end={map[q]} data-source-map={map.slice(p,q+1).join(',')}>{hits.length?<AnnotationHint branches={hits}>{hintProps=><mark {...hintProps} role="button" tabIndex={0} className={hits.some(b=>b.id===activeId)?'active':''} onClick={()=>onOpen(hits[0].id)} onKeyDown={e=>{hintProps.onKeyDown?.(e);if(e.key==='Enter'||e.key===' '){e.preventDefault();onOpen(hits[0].id);}}}>{part}</mark>}</AnnotationHint>:part}</span>;
     });
   }
-  return <div className="rich-text" data-message-id={message.id} data-revision={message.revision}><Markdown remarkPlugins={[remarkGfm,remarkMath]} rehypePlugins={[sourcePlugin,[rehypeKatex,{strict:'ignore',trust:false}]]} components={{
+  return <div className="rich-text" data-message-id={message.id} data-revision={message.revision}><Markdown remarkPlugins={[remarkGfm,remarkMath]} rehypePlugins={[sourcePlugin,guardMath,[rehypeKatex,{strict:'ignore',trust:false}],mathFallback]} components={{
     'source-text':({children,node}:any)=>text(String(children??''),node?.properties?.sourceStart,node?.properties?.sourceEnd),
     'source-formula':({children,node}:any)=>{
       const start=node?.properties?.sourceStart,end=node?.properties?.sourceEnd;

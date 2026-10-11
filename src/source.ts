@@ -1,3 +1,4 @@
+import katex from 'katex';
 // Presentation normalization never changes the persisted Markdown or its anchor offsets.
 export function normalizeMath(source: string) {
   let text='', i=0;const offsets:number[]=[0];
@@ -7,14 +8,32 @@ export function normalizeMath(source: string) {
     const fence=(i===0||source[i-1]==='\n')?source.slice(i).match(/^ {0,3}(`{3,}|~{3,})[^\n]*\n/):null;
     if(fence){const run=fence[1],close=new RegExp(`^ {0,3}${run[0]}{${run.length},}[^\\n]*(?:\\n|$)`,'gm');close.lastIndex=i+fence[0].length;const found=close.exec(source);copy(found?found.index+found[0].length:source.length);continue;}
     if(source[i]==='`'){const run=source.slice(i).match(/^`+/)![0],end=source.indexOf(run,i+run.length);copy(end<0?i+run.length:end+run.length);continue;}
+    if(source[i]==='\\'&&source[i+1]==='$'){copy(i+2);continue;}
+    if(source.startsWith('$$',i)){
+      let end=source.indexOf('$$',i+2);while(end>=0&&source[end-1]==='\\')end=source.indexOf('$$',end+2);
+      if(end<0){replace('\\$\\$',i+2);continue;}
+      if(i>0&&source[i-1]!=='\n')replace('\n\n',i);
+      replace('$$\n',i+2);copy(end);replace('\n$$',end+2);
+      if(i<source.length&&source[i]!=='\n')replace('\n\n',i);
+      continue;
+    }
+    if(source[i]==='$'){
+      let end=i+1;while(end<source.length&&source[end]!=='\n'){if(source[end]==='$'&&source[end-1]!=='\\')break;end++;}
+      if(end>=source.length||source[end]!=='$'||source[end+1]==='$'){replace('\\$',i+1);continue;}
+      copy(end+1);continue;
+    }
     if(source[i]==='\\'&&(source[i+1]==='('||source[i+1]==='[')&&(i===0||source[i-1]!=='\\')){
       const display=source[i+1]==='[',close=display?'\\]':'\\)',end=source.indexOf(close,i+2);
-      if(end>=0){replace(display?'$$\n':'$',i+2);copy(end);replace(display?'\n$$':'$',end+2);continue;}
+      if(end>=0){if(display&&i>0&&source[i-1]!=='\n')replace('\n\n',i);replace(display?'$$\n':'$',i+2);copy(end);replace(display?'\n$$':'$',end+2);if(display&&i<source.length&&source[i]!=='\n')replace('\n\n',i);continue;}
     }
     copy(i+1);
   }
   return{text,offsets};
 }
+
+// A malformed formula remains readable; never expose KaTeX's red error surface.
+export function mathFallback(){return(tree:any)=>{function walk(node:any){if(!node.children)return;node.children=node.children.map((child:any)=>{if(child.properties?.className?.includes('katex-error'))return{type:'element',tagName:'code',properties:{className:['math-fallback']},children:child.children};walk(child);return child;});}walk(tree);};}
+export function guardMath(){return(tree:any)=>{function walk(node:any){const classes=node.properties?.className??[];if(classes.some((c:string)=>['language-math','math-inline','math-display'].includes(c))){const value=(node.children??[]).map((child:any)=>child.value??'').join('');try{katex.renderToString(value,{throwOnError:true,strict:'ignore',trust:false});}catch{node.properties={...node.properties,className:['math-fallback']};}return;}for(const child of node.children??[])walk(child);}walk(tree);};}
 
 export function selectedSource(range: Range, root: HTMLElement): {start:number;end:number}|null {
   const element=(node:Node)=>node.nodeType===Node.ELEMENT_NODE?node as Element:node.parentElement;
