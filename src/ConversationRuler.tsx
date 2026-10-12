@@ -6,8 +6,8 @@ export function ConversationRuler({messages,scrollRef}:{messages:Message[];scrol
   const {t,n}=useI18n(),questions=messages.filter(m=>m.role==='user'),[active,setActive]=useState('');
   const fingerprint=messages.map(m=>`${m.id}:${m.text.length}`).join(',');
   useLayoutEffect(()=>{
-    const el=scrollRef.current;if(!el)return;let frame=0;
-    const measure=()=>{frame=0;const top=el.getBoundingClientRect().top+Math.min(90,el.clientHeight*.2);let id=questions[0]?.id??'';for(const message of el.querySelectorAll<HTMLElement>('[data-message-id]')){if(questions.some(q=>q.id===message.dataset.messageId)&&message.getBoundingClientRect().top<=top)id=message.dataset.messageId!;}setActive(id);};
+    const el=scrollRef.current;if(!el)return;const questionIds=new Set(questions.map(q=>q.id));let frame=0;
+    const measure=()=>{frame=0;const top=el.getBoundingClientRect().top+Math.min(90,el.clientHeight*.2);let id=questions[0]?.id??'';for(const message of el.querySelectorAll<HTMLElement>('[data-message-id]')){if(questionIds.has(message.dataset.messageId??'')&&message.getBoundingClientRect().top<=top)id=message.dataset.messageId!;}setActive(id);};
     const schedule=()=>{if(!frame)frame=requestAnimationFrame(measure);};
     measure();el.addEventListener('scroll',schedule,{passive:true});window.addEventListener('resize',schedule);
     const observer=typeof ResizeObserver!=='undefined'?new ResizeObserver(schedule):null;observer?.observe(el);if(el.firstElementChild)observer?.observe(el.firstElementChild);
