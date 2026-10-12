@@ -2,7 +2,16 @@ import manifest from '../package.json';
 
 export const appVersion = manifest.version;
 export const releaseEntries = [
-  { version: appVersion, date: '2026-10-11', title: 'Learning paths, materials & offline notebooks', changes: [
+  { version: appVersion, date: '2026-10-12', title: 'Learning tools & branching maps', changes: [
+    'A larger startup identity and a new motto introduce the learning workspace.',
+    'Notebook and mind map shortcuts sit beside the follow-up tree.',
+    'Visible subject prompts can be customized, saved and restored; preview exact organization context.',
+    'Organization shows elapsed time, streaming text and a quiet loading indicator.',
+    'Export expandable offline mind maps and switch the tree overview to a horizontal card layout.',
+    'Anchored introduction bubbles explain the real controls with spring motion.',
+    'Existing conversations, passage anchors, connections and sign-in storage are preserved.',
+  ] },
+  { version: '0.8.0', date: '2026-10-11', title: 'Learning paths, materials & offline notebooks', changes: [
     'Integrated window controls remove the mismatched native title bar.',
     'Local attachments support text, vision images and OpenAI document inputs, with portable backups.',
     'Record, pause, transcribe and either review or send; speech uses an API-key provider.',

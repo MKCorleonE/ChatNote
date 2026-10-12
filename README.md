@@ -20,18 +20,18 @@ ChatNote 是独立的跨平台对话式学习软件项目，目标平台为 **iP
 
 v0.3.0 扩大代码/公式/格式选区，补齐常见公式写法，新增私人批注笔记、发送前上下文确认和回答状态小字，并完善阅读位置与会话续期提示。
 
-Windows v0.8.0：以对话式学习为中心，新增本地附件、服务商语音转写、问题优先的路径目录与主线轨道概览、五步欢迎介绍，以及可离线打开的学习笔记导出；移除颜色不一致的原生标题栏，修复公式边界吞入正文的问题。圆角图标和跟随系统主题预览也正式纳入。原会话、锚点、草稿、连接与凭据保留。
+Windows v0.9.0：顶部学习笔记/思维导图入口、可见且可保存的学科整理预设、真实整理上下文预览与生成状态、可展开离线 HTML 思维导图、横向追问树切换及按钮旁的新人引导气泡。启动图标与文字放大、停留延长，座右铭改为“探索每一个问题，同时不偏离主线。”并同步三语。原会话、锚点、草稿、附件、连接与凭据保留。
 
-- [v0.8.0 Windows 安装包](https://github.com/MKCorleonE/ChatNote/releases/download/v0.8.0/ChatNote_0.8.0_x64-setup.exe)
-- [v0.8.0 可直接启动的程序](https://github.com/MKCorleonE/ChatNote/releases/download/v0.8.0/ChatNote_0.8.0.exe)
-- [v0.8.0 使用与验证](docs/V0.8.0_VALIDATION.md)
+- [v0.9.0 Windows 安装包](https://github.com/MKCorleonE/ChatNote/releases/download/v0.9.0/ChatNote_0.9.0_x64-setup.exe)
+- [v0.9.0 可直接启动的程序](https://github.com/MKCorleonE/ChatNote/releases/download/v0.9.0/ChatNote_0.9.0.exe)
+- [v0.9.0 使用与验证](docs/V0.9.0_VALIDATION.md)
 - [版本保留规则](docs/RELEASE_POLICY.md)
 - [国际化维护说明](docs/INTERNATIONALIZATION.md)
 - [v0.1.0 基线验证](docs/BUILD_AND_VALIDATION.md)
 
-0.8.0 使用、接口支持范围与验证见 [本版说明](docs/V0.8.0_VALIDATION.md)。108 项前端及 24 项常规原生检查通过；真实附件调用、语音转写、安装升级与手感仍待用户验收。
+117 项前端及 24 项常规原生检查通过；真实模型整理质量、安装升级、手机打开与手感仍待用户验收。DeepSeek 图片与文档/语音接口区别见 [本版说明](docs/V0.9.0_VALIDATION.md)。
 
-升级时先关闭旧版及开发预览/启动服务，再启动新版或安装，无需退出账号。常用目录保留 0.8.0 与 0.7.1，0.7.0 及更早交付归档保留；原对话、锚点、草稿、连接与凭据保留。私有下载需要仓库权限。
+升级时先关闭旧版及开发预览/启动服务，再启动新版或安装，无需退出账号。常用目录保留 0.9.0 与 0.8.0，0.7.1 及更早交付归档保留；原对话、锚点、草稿、附件、连接与凭据保留。私有下载需要仓库权限。
 
 圆角图标与跟随系统主题预览已纳入 0.8.0；预览过程保留。[本轮说明](docs/PREVIEW_ROUNDED_ICON_SYSTEM_THEME.md)。
 
