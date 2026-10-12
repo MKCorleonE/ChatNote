@@ -2,7 +2,14 @@ import manifest from '../package.json';
 
 export const appVersion = manifest.version;
 export const releaseEntries = [
-  { version: appVersion, date: '2026-10-12', title: 'Learning tools & branching maps', changes: [
+  { version: '0.10.0', date: '2026-10-12', title: 'Materials, context choices & learning milestones', changes: [
+    'Paste images into either composer; document input follows the selected provider and model.',
+    'Fixed the speech model default and added Qwen ASR alongside compatible transcription providers.',
+    'Choose source and conversation history per request; review the actual budgeted context.',
+    'Connected map cards resize in the app and offline HTML; round markers follow your reading position.',
+    'Notifications last 2.5 seconds with spring motion; successful notebook and map exports celebrate with confetti.',
+  ] },
+  { version: '0.9.0', date: '2026-10-12', title: 'Learning tools & branching maps', changes: [
     'A larger startup identity and a new motto introduce the learning workspace.',
     'Notebook and mind map shortcuts sit beside the follow-up tree.',
     'Visible subject prompts can be customized, saved and restored; preview exact organization context.',

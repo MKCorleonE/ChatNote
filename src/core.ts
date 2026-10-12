@@ -26,20 +26,35 @@ export function contextFor(session: Session, branch: Branch | null, budget = 480
   const turns = activeMessages(branch ?? session).filter(m => m.role === 'user' || m.status === 'complete').map(m => ({ role: m.role, content: m.text, ...(m.attachments?.length?{attachments:m.attachments}:{}) }));
   const history = branch ? [...branch.sourceContext, ...turns] : turns;
   const quote: ContextItem[] = branch ? [{ role: 'user', content: `This is a passage-anchored follow-up. Answer the current question about this exact source.\n\n<source>\n${branch.anchor.quote}\n</source>` }] : [];
-  const size = (xs: ContextItem[]) => xs.reduce((n, i) => n + i.content.length + (i.attachments??[]).reduce((a,f)=>a+(f.kind==='text'?f.size:0),0), 0);
-  const source = branch ? 'Source snapshot + this annotation only' : 'Main conversation only';
-  if (size([...quote, ...history]) <= budget) return { source, characters: size([...quote, ...history]), budget, summarized: false, omittedTurns: 0, items: [...quote, ...history] };
-  // Never pretend that an extract is a semantic summary; label it and preserve full originals locally.
-  const recent: ContextItem[] = [];
-  let available = budget - size(quote) - 2500;
-  for (let i = history.length - 1; i >= 0; i--) { if (size(recent) + history[i].content.length > available) break; recent.unshift(history[i]); }
-  if (!recent.length) throw new Error('Your latest question or selected source exceeds the context budget. Shorten it or increase the budget in Settings.');
-  const older = history.slice(0, history.length - recent.length);
-  const extract = older.map((x, i) => `[${i + 1} ${x.role}] ${x.content.slice(0, 160).replace(/\s+/g, ' ')}${x.content.length > 160 ? '…' : ''}`).join('\n').slice(0, 2200);
-  const items = [...quote, { role: 'user' as const, content: `Earlier context is an abbreviated extract, not the complete history and not a verified summary. Ask for clarification if details are missing.\n${extract}` }, ...recent];
-  if (size(items) > budget) throw new Error('The source and recent question exceed the context budget. Choose a shorter passage.');
-  return { source, characters: size(items), budget, summarized: true, omittedTurns: older.length, items };
+  const candidates = [...quote, ...history], questionIndex=turns.map(item=>item.role).lastIndexOf('user');
+  return selectContext({source: branch ? 'Source snapshot + this annotation only' : 'Main conversation only', budget, characters:0, summarized:false, omittedTurns:0, items:[], candidates, sourceCount:branch?quote.length+branch.sourceContext.length:0, required:[...(branch?[0]:[]), ...(questionIndex>=0?[quote.length+history.length-turns.length+questionIndex]:[])]}, candidates.map((_,i)=>i));
 }
+export function contextSize(items:ContextItem[]):number {
+  return items.reduce((sum,item)=>sum+item.content.length+(item.attachments??[]).reduce((n,a)=>n+(a.kind==='text'?a.size:0),0),0);
+}
+export function selectContext(report:ContextReport, selected:number[]):ContextReport {
+  const candidates=report.candidates??report.items;
+  const indices=[...new Set([...selected,...report.required??[]])].filter(i=>i>=0&&i<candidates.length).sort((a,b)=>a-b);
+  const history=indices.map(i=>candidates[i]);
+  const complete={...report,candidates,selected:indices,items:history,characters:contextSize(history),summarized:false,omittedTurns:0};
+  if(complete.characters<=report.budget)return complete;
+  const required=new Set(report.required??[candidates.length-1]);
+  const fixed=indices.filter(i=>required.has(i)).map(i=>candidates[i]);
+  if(contextSize(fixed)>report.budget)throw new Error('Your latest question or selected source exceeds the context budget. Shorten it or increase the budget in Settings.');
+  const older=indices.filter(i=>!required.has(i));
+  const recent:number[]=[];
+  // Reserve room for an explicitly labelled extract, including UTF-8 text attachments.
+  let available=report.budget-contextSize(fixed)-2500;
+  for(let i=older.length-1;i>=0;i--){const index=older[i],cost=contextSize([candidates[index]]);if(cost>available)break;recent.unshift(index);available-=cost;}
+  const abbreviated=older.slice(0,older.length-recent.length);
+  const extract=abbreviated.map(i=>`[${i+1} ${candidates[i].role}] ${candidates[i].content.slice(0,160).replace(/\s+/g,' ')}${candidates[i].content.length>160?'…':''}`).join('\n').slice(0,2200);
+  const note:ContextItem={role:'user',content:`Earlier context is an abbreviated extract, not the complete history and not a verified summary. Ask for clarification if details are missing.\n${extract}`};
+  const retained=indices.filter(i=>required.has(i)||recent.includes(i));
+  const items=[...(retained.includes(0)&&required.has(0)?[candidates[0]]:[]),note,...retained.filter(i=>!(i===0&&required.has(0))).map(i=>candidates[i])];
+  if(contextSize(items)>report.budget)throw new Error('The source and recent question exceed the context budget. Choose a shorter passage.');
+  return {...complete,items,characters:contextSize(items),summarized:true,omittedTurns:abbreviated.length};
+}
+
 export function validateWorkspace(data: unknown): asserts data is Workspace {
   const w = data as Workspace;
   const checkAttachments=(items:unknown)=>{if(items!==undefined&&(!Array.isArray(items)||items.length>8||items.some(a=>!validateAttachment(a))))throw new Error('Invalid attachment metadata.');};

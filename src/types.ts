@@ -17,10 +17,10 @@ export interface LearningPreferences { selectedId?: string; customPrompt?: strin
 export interface Settings { provider: ProviderKind; endpoint: string; model: string; reasoningEffort?: ReasoningEffort; profiles?: ConnectionProfile[]; activeProfileId?: string; modelCatalogs?: Record<string, CatalogSnapshot>; panelWidth?: number; historyPinned?:boolean; composerGlow?: ComposerGlow; annotationHighlight?: AnnotationHighlight; language?: Language; fontSize: number; annotations: boolean; theme: 'dark' | 'light'; followSystemTheme?: boolean; contextBudget: number; welcomeVersion?:string; voiceProfileId?:string; learningPreferences?:LearningPreferences; treeLayout?:'trail'|'map' }
 export interface Workspace { version: 1; sessions: Session[]; activeId: string; settings: Settings }
 export interface ContextItem { role: 'user' | 'assistant'; content: string; attachments?: Attachment[] }
-export interface ContextReport { source: string; characters: number; budget: number; summarized: boolean; omittedTurns: number; items: ContextItem[] }
+export interface ContextReport { source: string; characters: number; budget: number; summarized: boolean; omittedTurns: number; items: ContextItem[]; candidates?:ContextItem[]; selected?:number[]; sourceCount?:number; required?:number[] }
 export interface Connection { apiKey: boolean; compatibleKey: boolean; chatgpt: boolean; email?: string; planUsage?: boolean; legacyCompatibleEndpoint?: string }
 export interface ProfileStatus { hasKey: boolean; endpointMatches: boolean; connected: boolean; planUsage: boolean; email?: string; registered?:boolean;refreshable?:boolean }
 export interface UsageInfo { kind: 'balance' | 'external'; available?: boolean; balances?: { currency: string; total: string; granted: string; toppedUp: string }[]; url: string; checkedAt?: number }
 export interface Model { id: string; name: string; reasoningEfforts?: ReasoningEffort[]; defaultReasoningEffort?: ReasoningEffort }
 export interface Generation { requestId: string; provider: ProviderKind; endpoint: string; profileId?: string; model: string; reasoningEffort?: ReasoningEffort; input: ContextItem[]; instructions: string; imageInput?:boolean }
-export interface StreamEvent { type: 'delta' | 'done' | 'error'; text?: string; error?: string }
+export interface StreamEvent { type: 'delta' | 'done' | 'error' | 'warning'; text?: string; error?: string }
