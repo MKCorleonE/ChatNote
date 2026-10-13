@@ -54,13 +54,7 @@ fn strip(value: &mut Value, ids: &HashSet<String>, removed: &mut HashSet<String>
     }
 }
 pub fn purge(db: &mut Connection, payload: &str, session_ids: &[String]) -> Result<(), String> {
-    if payload.len() > 20_000_000
-        || session_ids.is_empty()
-        || session_ids.len() > 2000
-        || session_ids
-            .iter()
-            .any(|id| uuid::Uuid::parse_str(id).is_err())
-    {
+    if payload.len() > 20_000_000 || session_ids.is_empty() || session_ids.len() > 2000 {
         return Err("Invalid recycle bin deletion".into());
     }
     let next: Value = serde_json::from_str(payload).map_err(|_| "Invalid workspace JSON")?;
@@ -143,7 +137,9 @@ mod tests {
             std::env::temp_dir().join(format!("chatnote-trash-{}.sqlite", uuid::Uuid::new_v4()));
         {
             let mut db = open_database(&path).unwrap();
-            let gone = uuid::Uuid::new_v4().to_string();
+            // Conversation IDs in existing/imported workspaces are opaque strings,
+            // never paths. Cleanup must support the same IDs as workspace loading.
+            let gone = "imported-conversation".to_string();
             let kept = uuid::Uuid::new_v4().to_string();
             let private =
                 serde_json::json!({"id":"private-file","kind":"image","mime":"image/png","size":1});
