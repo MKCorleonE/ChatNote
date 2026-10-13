@@ -57,6 +57,7 @@ type Job = {
 const noteDraftKey=(anchor:Anchor)=>`note:${anchor.messageId}:${anchor.revision}:${anchor.start}:${anchor.end}`;
 const safeName = (s: string) => s.replace(/[<>:"/\\|?*\x00-\x1f]/g, '-').slice(0, 90) || 'ChatNote';
 export default function App() {
+  const [settingsVoice,setSettingsVoice]=useState(false);
   const [w, setW] = useState<Workspace | null>(null),
     [loadError, setLoadError] = useState(''),
     [saved, setSaved] = useState('Opening local records…');
@@ -400,7 +401,7 @@ export default function App() {
   function setAttachments(key:string,items:Attachment[],sessionId=current?.id){if(sessionId)updateSession(sessionId,s=>({...s,view:{...s.view,attachmentDrafts:{...s.view.attachmentDrafts,[key]:items}}}));}
   async function startVoice(where:'main'|'branch',key:string){
     if(!current||!w||jobRef.current||mediaBusy)return;
-    if(!bridge.desktop){setSettings(true);notify(t('Choose an API-key voice connection in Reading & context.'));return;}
+    if(!bridge.desktop){setSettingsVoice(true);setSettings(true);notify(t('Configure a voice API connection in Models & connections.'));return;}
     const sessionId=current.id,settings=w.settings,preferred=voiceProfile(settings);
     const candidates=settings.voiceProfileId?(preferred?[preferred]:[]):[...(preferred?[preferred]:[]),...(settings.profiles??[]).filter(p=>supportsVoice(p)&&p.id!==preferred?.id)];
     setMediaBusy(true);
@@ -408,7 +409,7 @@ export default function App() {
       let selected:ConnectionProfile|undefined;
       for(const candidate of candidates){try{const status=await bridge.profileStatus(candidate);if(status.hasKey&&status.endpointMatches){selected=candidate;break;}}catch{/* A failed status read does not authorize transcription. */}}
       if(wRef.current?.activeId!==sessionId||wRef.current.settings.voiceProfileId!==settings.voiceProfileId||jobRef.current)return;
-      if(!selected){setSettings(true);notify(t('Choose an API-key voice connection in Reading & context.'));return;}
+      if(!selected){setSettingsVoice(true);setSettings(true);notify(t('Configure a voice API connection in Models & connections.'));return;}
       setVoice({sessionId,key,where,profile:selected});
     }finally{setMediaBusy(false);}
   }
@@ -797,7 +798,7 @@ export default function App() {
   } as CSSProperties} onMouseUp={selectText} onKeyUp={e => {
     if (e.shiftKey) selectText();
   }} onTouchEnd={() => setTimeout(selectText, 60)}>
-    <nav className="rail" aria-label={t('Navigation')}><div className="rail-capsule"><button className="rail-button rail-new" onClick={() => addSession()} title={t('New conversation')} aria-label={t('New conversation')}><Plus size={20}/></button><button className={`rail-button ${historyVisible ? 'active' : ''}`} aria-expanded={historyVisible} aria-controls="conversation-history" onClick={() => { if(historyVisible)closeHistory();else setHistory(true); setSettings(false); setMore(false); }} title={t('Conversations')} aria-label={t('Open conversations')}><Menu size={19}/></button><button data-guide="connections" className={`rail-button rail-settings ${settings ? 'active' : ''}`} aria-expanded={settings} onClick={() => { setSettings(x => !x); setHistory(false); setMore(false); }} title={t('Settings')} aria-label={t('Open settings')}><SettingsIcon size={19}/></button></div></nav>
+    <nav className="rail" aria-label={t('Navigation')}><div className="rail-capsule"><button className="rail-button rail-new" onClick={() => addSession()} title={t('New conversation')} aria-label={t('New conversation')}><Plus size={20}/></button><button className={`rail-button ${historyVisible ? 'active' : ''}`} aria-expanded={historyVisible} aria-controls="conversation-history" onClick={() => { if(historyVisible)closeHistory();else setHistory(true); setSettings(false); setSettingsVoice(false); setMore(false); }} title={t('Conversations')} aria-label={t('Open conversations')}><Menu size={19}/></button><button data-guide="connections" className={`rail-button rail-settings ${settings ? 'active' : ''}`} aria-expanded={settings} onClick={() => { setSettingsVoice(false); setSettings(x => !x); setHistory(false); setMore(false); }} title={t('Settings')} aria-label={t('Open settings')}><SettingsIcon size={19}/></button></div></nav>
     <div className="workspace"><header className="topbar" data-tauri-drag-region><div className="title-group" data-tauri-drag-region><span className="wordmark" data-tauri-drag-region>ChatNote</span><span className="title-divider" data-tauri-drag-region /><button className="session-title" title={t("Rename conversation")} onClick={() => setRenaming({sessionId:current.id,title:current.title})}>{current.title}<ChevronDown size={12} /></button></div><div className="top-actions">{w.settings.annotations && <button data-guide="tree" className={`toolbar-button ${mode === 'tree' ? 'active' : ''}`} onClick={showTree} aria-label={t("Follow-up tree")} title={t("Follow-up tree")}><TreeDeciduous size={16} /><span>{t("Follow-up tree")}</span>{current.branches.length > 0 && <small>{n(current.branches.length)}</small>}</button>}<button data-guide="notebook" className="icon-button" disabled={!!job||mediaBusy} title={t('Learning notebook')} aria-label={t('Learning notebook')} onClick={()=>setNotebook(true)}><BookOpen size={19}/></button><button data-guide="mind-map" className="icon-button" disabled={!!job||mediaBusy} title={t('Mind map')} aria-label={t('Mind map')} onClick={()=>setMindMap(true)}><Network size={19}/></button><button data-more-trigger className="icon-button" aria-expanded={more} onClick={() => setMore(x => !x)} aria-label={t("More actions")}><MoreHorizontal size={19} /></button><WindowControls/></div>{morePresence.rendered && <div inert={morePresence.leaving} aria-hidden={morePresence.leaving} className={`action-menu ${morePresence.leaving?'leaving':''}`}><button onClick={()=>{setMore(false);setUpdatedWelcome(false);setWelcome(true);}}><BookOpen size={15}/>{t('Show introduction')}</button><button onClick={async () => {
             setMore(false);
             try {
@@ -838,7 +839,7 @@ export default function App() {
       left: selection.x,
       top: selection.y
     }} onMouseDown={e => e.preventDefault()}><span>{selection.anchor.quote.slice(0, 25)}</span><button onClick={createAnnotation}><Plus size={14} />{t("Ask in annotation")}</button></div>}
-    {settingsPresence.rendered && <Settings closing={settingsPresence.leaving} onBackup={() => void backup()} onImport={() => importRef.current?.click()} dataBusy={!!job} value={w.settings} onLanguageChange={async chosen=>{remember();if(!wRef.current)return;const next={...wRef.current,settings:{...wRef.current.settings,language:chosen}};setW(next);setSelection(null);setNotice('');await bridge.saveWorkspace(next);}} onChange={async s => {
+    {settingsPresence.rendered && <Settings voiceSetup={settingsVoice} closing={settingsPresence.leaving} onBackup={() => void backup()} onImport={() => importRef.current?.click()} dataBusy={!!job} value={w.settings} onLanguageChange={async chosen=>{remember();if(!wRef.current)return;const next={...wRef.current,settings:{...wRef.current.settings,language:chosen}};setW(next);setSelection(null);setNotice('');await bridge.saveWorkspace(next);}} onChange={async s => {
       if (!wRef.current) return;
       const next = {
         ...wRef.current,
@@ -846,7 +847,7 @@ export default function App() {
       };
       setW(next);
       await bridge.saveWorkspace(next);
-    }} onClose={() => {setSettings(false);setCatalogEpoch(x=>x+1);}} onNotice={notify} />}
+    }} onClose={() => {setSettings(false);setSettingsVoice(false);setCatalogEpoch(x=>x+1);}} onNotice={notify} />}
     {pendingDelete&&<DeleteDialog title={t(pendingDelete.messageId?'Delete answer':'Delete conversation…')} description={pendingDelete.messageId?t('Delete this question and its answers? Retries in this turn and linked annotations or notes will also be deleted. Other turns and question versions stay.'):t('deleteConversationPrompt',{name:w.sessions.find(s=>s.id===pendingDelete.sessionId)?.title??''})} detail={pendingDelete.messageId&&affectedBranches(w.sessions.find(s=>s.id===pendingDelete.sessionId)!,pendingDelete.messageId).size?t('deleteLinkedAnnotations',{count:n(affectedBranches(w.sessions.find(s=>s.id===pendingDelete.sessionId)!,pendingDelete.messageId).size)}):undefined} onCancel={()=>setPendingDelete(null)} onDelete={confirmDeletion}/>}
     {renaming && <RenameDialog key={renaming.sessionId} title={renaming.title} onCancel={()=>setRenaming(null)} onSave={title=>{updateSession(renaming.sessionId,s=>({...s,title}));setRenaming(null);}}/>}
     {context&&<ContextDialog report={context} preview={contextPreview} instructions={instructions} capabilityError={contextPreview?attachmentError(context.items.flatMap(i=>i.attachments??[]),activeProfile(pendingSend?.settings??w.settings)!):null} canSend={!!pendingSend&&bridge.desktop} onChange={report=>{setContext(report);setPendingSend(plan=>plan?{...plan,report}:null);}} onSend={()=>{if(pendingSend)executeSend(pendingSend);}} onClose={()=>{setContext(null);setPendingSend(null);}} onNotice={notify}/>}

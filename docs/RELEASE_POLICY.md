@@ -2,9 +2,9 @@
 
 用户已确认本规则：已交付版本保留并归档，临时构建可以清理；本地常用目录留最新版＋上一稳定版，更早版本以后放到 GitHub Releases。
 
-已执行：常用目录保留本地 v0.10.0 ＋上一稳定版 v0.9.0；v0.8.0 及更早版本移入 releases/archive/ 对应目录。32 个当前与历史交付文件 SHA-256 核对通过。v0.8.0 归档前后文件校验相同，非版本化个人导出继续保留；v0.2.0 Release 仍收存早期安装包，不伪造早期源码历史。
+本轮 0.11.0 交付后，常用目录保留 0.11.0＋上一稳定版 0.10.0；0.9.0 及更早移入 releases/archive/ 对应目录。归档前后核对 SHA-256，原始交付文件不重建或替换，非版本化个人导出继续保留；早期 Release 不伪造源码历史。
 
-[本地 v0.10.0 使用与交付](V0.10.0_VALIDATION.md) / [上一稳定版 v0.9.0](https://github.com/MKCorleonE/ChatNote/releases/tag/v0.9.0) / [v0.2.0 与历史安装包归档](https://github.com/MKCorleonE/ChatNote/releases/tag/v0.2.0)。仓库保持私有；本次源码通过 PR 复核，GitHub 新 Release 尚未发布。
+[0.11.0 使用与交付](V0.11.0_VALIDATION.md) / [0.11.0 私有 Release](https://github.com/MKCorleonE/ChatNote/releases/tag/v0.11.0) / [0.10.0 回退](https://github.com/MKCorleonE/ChatNote/releases/tag/v0.10.0)。0.10.0 已补齐 main 合并和正式 Release；0.11.0 按同一 CI、标签及资产校验流程发布。仓库保持私有。
 
 ## 哪些文件保留
 

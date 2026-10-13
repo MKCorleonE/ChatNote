@@ -2,6 +2,13 @@ import manifest from '../package.json';
 
 export const appVersion = manifest.version;
 export const releaseEntries = [
+  { version:'0.11.0', date:'2026-10-13', title:'Reading fixes & image previews', changes:[
+    'Round markers now update during manual scrolling, including the initial conversation view.',
+    'Image attachments show local thumbnails and open a larger preview without uploading.',
+    'Long main-thread context cards stay inside the preview window.',
+    'Voice setup is in Models & connections, and the microphone shortcut opens it directly.',
+    'Mind map expansion replays its spring animation on every opening.',
+  ] },
   { version: '0.10.0', date: '2026-10-12', title: 'Materials, context choices & learning milestones', changes: [
     'Paste images into either composer; document input follows the selected provider and model.',
     'Fixed the speech model default and added Qwen ASR alongside compatible transcription providers.',
