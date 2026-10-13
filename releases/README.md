@@ -2,7 +2,8 @@
 
 - ChatNote_0.11.0_x64-setup.exe：安装程序。
 - ChatNote_0.11.0.exe：直接启动程序，需要系统WebView2。
-- SHA256SUMS.txt：当前与历史交付文件的校验值。
+- ChatNote_0.11.0_mind-map-example.html：合成会话离线导图，保留连线和拖动调宽。
+- SHA256SUMS.txt：35 个当前与历史交付文件的校验值。
 
 先关闭旧版及开发预览，再安装或启动，无需退出账号。原会话、锚点、笔记、草稿、附件、连接、凭据及ChatGPT注册保留。回退前导出完整工作区备份。
 
