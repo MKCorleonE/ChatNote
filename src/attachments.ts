@@ -15,14 +15,27 @@ export function supportsImages(profile:ConnectionProfile):boolean {
   if(profile.provider==='openai'||profile.provider==='chatgpt')return !/^(o1|o3-mini)|embedding|audio|whisper|tts|realtime/i.test(profile.model);
   return /qwen.*(?:vl|3\.6)|qvq|deepseek-flash|deepseek-v4-flash-vision/i.test(profile.model);
 }
+export function qwenEndpoint(endpoint:string):boolean {
+  try { const host=new URL(endpoint).hostname;return host==='dashscope.aliyuncs.com'||host==='dashscope-intl.aliyuncs.com'||host.endsWith('.maas.aliyuncs.com'); } catch { return false; }
+}
+export function supportsDocuments(profile:ConnectionProfile):boolean {
+  return profile.provider==='openai'||profile.provider==='compatible'&&qwenEndpoint(profile.endpoint)&&/^qwen-(long|doc-turbo)(?:-|$)/i.test(profile.model);
+}
+export function transcriptionModel(profile:ConnectionProfile):string {
+  return (profile.transcriptionModel?.trim()==='gpt-transcribe'?'gpt-4o-mini-transcribe':profile.transcriptionModel?.trim()) || (profile.provider==='openai'?'gpt-4o-mini-transcribe':qwenEndpoint(profile.endpoint)?'qwen3-asr-flash':'');
+}
+export function supportsVoice(profile:ConnectionProfile):boolean {
+  return profile.provider!=='chatgpt'&&!!transcriptionModel(profile);
+}
 export function attachmentError(items:Attachment[],profile:ConnectionProfile):string|null {
   if(items.length>8||items.reduce((n,a)=>n+a.size,0)>maxRequestAttachmentBytes)return 'Use up to 8 attachments and 20 MB per request.';
   if(items.some(a=>a.kind==='image')&&!supportsImages(profile))return 'Choose a vision model or enable image input for this connection.';
-  if(items.some(a=>a.kind==='document')&&profile.provider!=='openai')return 'PDF and Office documents require an OpenAI API connection. Other connections support text files and compatible vision images.';
+  if(items.some(a=>a.kind==='document')&&!supportsDocuments(profile))return profile.preset==='deepseek'||/api\.deepseek\.com/.test(profile.endpoint)?'DeepSeek accepts images, but its Files API does not accept PDF or Office documents. Attach UTF-8 text instead.':'This model does not support document input here. Choose OpenAI API or Qwen-Long / Qwen-Doc, or attach UTF-8 text.';
+  if(items.some(a=>a.name.toLowerCase().endsWith('.pptx'))&&profile.provider!=='openai'&&/^qwen-long(?:-|$)/i.test(profile.model))return 'Qwen-Long does not accept PPTX. Choose Qwen-Doc or convert it to PDF.';
   return null;
 }
 export function voiceProfile(settings:Settings):ConnectionProfile|undefined {
-  const eligible=(p:ConnectionProfile)=>p.provider==='openai'||p.provider==='compatible'&&!!p.transcriptionModel?.trim();
+  const eligible=supportsVoice;
   if(settings.voiceProfileId)return settings.profiles?.find(p=>p.id===settings.voiceProfileId&&eligible(p));
   return settings.profiles?.find(p=>p.id===settings.activeProfileId&&eligible(p))??settings.profiles?.find(eligible);
 }

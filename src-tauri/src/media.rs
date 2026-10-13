@@ -117,7 +117,7 @@ pub fn materialize(
 ) -> Result<Vec<Value>, String> {
     let mut total = 0;
     let mut count = 0;
-    let compatible = provider == "compatible";
+    let compatible = provider == "compatible" || provider == "qwen-document";
     input.iter().map(|item| {
         let role = item["role"].as_str().ok_or("Invalid message role")?;
         if !matches!(role,"user"|"assistant") { return Err("Invalid message role".into()); }
@@ -141,11 +141,152 @@ pub fn materialize(
                 "image" if image_input => { let data = format!("data:{};base64,{}",a.mime,stored.data); parts.push(if compatible {json!({"type":"image_url","image_url":{"url":data}})}else{json!({"type":"input_image","image_url":data})}); }
                 "image" => return Err("Choose a vision model or enable image input for this connection.".into()),
                 "document" if provider == "openai" => parts.push(json!({"type":"input_file","filename":a.name,"file_data":format!("data:{};base64,{}",a.mime,stored.data)})),
-                _ => return Err("PDF and Office documents require an OpenAI API connection.".into()),
+                "document" if provider == "qwen-document" => parts.push(json!({"type":"chatnote_document","id":a.id})),
+                _ => return Err("This connection does not support PDF or Office documents. Choose OpenAI API or Qwen-Long / Qwen-Doc, or attach UTF-8 text.".into()),
             }
+        }
+        if compatible && parts.iter().all(|part|part["type"]=="text") {
+            return Ok(json!({"role":role,"content":parts.iter().filter_map(|part|part["text"].as_str()).collect::<Vec<_>>().join("\n\n")}));
         }
         Ok(json!({"role":role,"content":parts}))
     }).collect()
+}
+pub fn qwen_documents(base: &str, model: &str) -> bool {
+    qwen_endpoint(base)
+        && (model == "qwen-long"
+            || model.starts_with("qwen-long-")
+            || model == "qwen-doc-turbo"
+            || model.starts_with("qwen-doc-turbo-"))
+}
+pub async fn upload_documents(
+    input: &mut [Value],
+    state: &Runtime,
+    base: &str,
+    model: &str,
+    secret: &str,
+    uploaded: &mut Vec<String>,
+    cancel: &tokio::sync::watch::Receiver<bool>,
+) -> Result<(), String> {
+    let mut cache = std::collections::HashMap::<String, String>::new();
+    for item in input.iter_mut() {
+        let Some(parts) = item["content"].as_array_mut() else {
+            continue;
+        };
+        let mut file_ids = Vec::new();
+        for part in parts.iter_mut() {
+            if part["type"] != "chatnote_document" {
+                continue;
+            }
+            if *cancel.borrow() {
+                return Err("Stopped".into());
+            }
+            let id = part["id"]
+                .as_str()
+                .ok_or("Invalid document reference")?
+                .to_owned();
+            let stored = load(state, &id)?;
+            if stored.attachment.name.to_lowercase().ends_with(".pptx")
+                && model.starts_with("qwen-long")
+            {
+                return Err(
+                    "Qwen-Long does not accept PPTX. Choose Qwen-Doc or convert it to PDF.".into(),
+                );
+            }
+            let file_id = if let Some(existing) = cache.get(&id) {
+                existing.clone()
+            } else {
+                let bytes = validate(&stored.attachment, &stored.data)?;
+                let (boundary, body) = document_multipart(&stored.attachment, &bytes);
+                let response = network::send_request(
+                    network::client()?
+                        .post(format!("{base}/files"))
+                        .bearer_auth(secret)
+                        .header(
+                            "Content-Type",
+                            format!("multipart/form-data; boundary={boundary}"),
+                        )
+                        .body(body),
+                )
+                .await
+                .map_err(|e| network::transport_error(&e, "Document upload failed"))?;
+                let result: Value = network::checked(response, secret)
+                    .await?
+                    .json()
+                    .await
+                    .map_err(|_| "Invalid document upload response")?;
+                let file_id = result["id"]
+                    .as_str()
+                    .filter(|id| {
+                        id.starts_with("file-")
+                            && id.len() < 200
+                            && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+                    })
+                    .ok_or("Invalid uploaded file ID")?
+                    .to_owned();
+                uploaded.push(file_id.clone());
+                cache.insert(id, file_id.clone());
+                file_id
+            };
+            file_ids.push(file_id);
+            *part = json!({"type":"text","text":format!("Attached document: {}",stored.attachment.name)});
+        }
+        if !file_ids.is_empty() {
+            item["chatnote_file_ids"] = json!(file_ids);
+        }
+    }
+    Ok(())
+}
+pub fn prepare_qwen_input(input: Vec<Value>) -> Vec<Value> {
+    let mut references = Vec::new();
+    let mut output = Vec::new();
+    for mut item in input {
+        if let Some(ids) = item
+            .as_object_mut()
+            .and_then(|o| o.remove("chatnote_file_ids"))
+        {
+            for id in ids.as_array().into_iter().flatten() {
+                let reference = json!({"role":"system","content":format!("fileid://{}",id.as_str().unwrap_or(""))});
+                if !references.contains(&reference) {
+                    references.push(reference);
+                }
+            }
+        }
+        if let Some(parts) = item["content"].as_array() {
+            if parts.iter().all(|part| part["type"] == "text") {
+                item["content"] = json!(parts
+                    .iter()
+                    .filter_map(|part| part["text"].as_str())
+                    .collect::<Vec<_>>()
+                    .join("\n\n"));
+            }
+        }
+        output.push(item);
+    }
+    references.extend(output);
+    references
+}
+
+pub async fn clean_documents(base: &str, secret: &str, uploaded: &[String]) -> bool {
+    if uploaded.is_empty() {
+        return true;
+    }
+    let Ok(client) = network::client() else {
+        return false;
+    };
+    let outcomes=futures_util::future::join_all(uploaded.iter().map(|id|{
+        let pending=client.delete(format!("{base}/files/{id}")).bearer_auth(secret).timeout(std::time::Duration::from_secs(10)).send();
+        async move {matches!(pending.await,Ok(response) if response.status().is_success()||response.status()==404)}
+    })).await;
+    outcomes.into_iter().all(|success| success)
+}
+
+fn document_multipart(a: &Attachment, bytes: &[u8]) -> (String, Vec<u8>) {
+    let boundary = format!("ChatNote{}", uuid::Uuid::new_v4().simple());
+    let extension = a.name.rsplit('.').next().unwrap_or("pdf").to_lowercase();
+    let mut body=format!("--{boundary}\r\nContent-Disposition: form-data; name=\"purpose\"\r\n\r\nfile-extract\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"attachment.{extension}\"\r\nContent-Type: {}\r\n\r\n",a.mime).into_bytes();
+    body.extend_from_slice(bytes);
+    body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+    (boundary, body)
 }
 
 #[tauri::command]
@@ -170,7 +311,7 @@ pub async fn transcribe(
         "audio/wav" => "wav",
         _ => return Err("Unsupported recording format".into()),
     };
-    let bytes = STANDARD.decode(data).map_err(|_| "Invalid recording")?;
+    let bytes = STANDARD.decode(&data).map_err(|_| "Invalid recording")?;
     if bytes.is_empty() || bytes.len() > 25 * 1024 * 1024 {
         return Err("Recording must be under 25 MB".into());
     }
@@ -179,9 +320,25 @@ pub async fn transcribe(
     if model.chars().any(char::is_control) {
         return Err("Invalid transcription model".into());
     }
+    let qwen = qwen_endpoint(&base)
+        && model.starts_with("qwen3-asr-flash")
+        && !model.contains("filetrans")
+        && !model.contains("realtime");
+    if qwen && bytes.len() > 10 * 1024 * 1024 {
+        return Err("Qwen recordings must be under 10 MB and 5 minutes.".into());
+    }
     let (boundary, body) =
         audio_multipart(&model, &bytes, extension, mime.split(';').next().unwrap());
-    let response = network::send_request(
+    let request = if qwen {
+        network::client()?
+            .post(format!("{base}/chat/completions"))
+            .bearer_auth(&secret)
+            .json(&qwen_audio_body(
+                &model,
+                &data,
+                mime.split(';').next().unwrap(),
+            ))
+    } else {
         network::client()?
             .post(format!("{base}/audio/transcriptions"))
             .bearer_auth(&secret)
@@ -189,23 +346,41 @@ pub async fn transcribe(
                 "Content-Type",
                 format!("multipart/form-data; boundary={boundary}"),
             )
-            .body(body),
-    )
-    .await
-    .map_err(|e| network::transport_error(&e, "Speech transcription failed"))?;
+            .body(body)
+    };
+    let response = network::send_request(request)
+        .await
+        .map_err(|e| network::transport_error(&e, "Speech transcription failed"))?;
     let result: Value = network::checked(response, &secret)
         .await?
         .json()
         .await
         .map_err(|_| "Invalid transcription response")?;
-    let text = result["text"]
-        .as_str()
-        .ok_or("The provider did not return a transcript")?
-        .trim();
+    let text = (if qwen {
+        &result["choices"][0]["message"]["content"]
+    } else {
+        &result["text"]
+    })
+    .as_str()
+    .ok_or("The provider did not return a transcript")?
+    .trim();
     if text.is_empty() || text.len() > 200_000 {
         return Err("No speech was recognized. Try recording again.".into());
     }
     Ok(text.to_owned())
+}
+pub fn qwen_endpoint(base: &str) -> bool {
+    url::Url::parse(base)
+        .ok()
+        .and_then(|u| u.host_str().map(str::to_owned))
+        .is_some_and(|host| {
+            host == "dashscope.aliyuncs.com"
+                || host == "dashscope-intl.aliyuncs.com"
+                || host.ends_with(".maas.aliyuncs.com")
+        })
+}
+fn qwen_audio_body(model: &str, data: &str, mime: &str) -> Value {
+    json!({"model":model,"messages":[{"role":"user","content":[{"type":"input_audio","input_audio":{"data":format!("data:{mime};base64,{data}")}}]}],"stream":false,"asr_options":{"enable_itn":false}})
 }
 fn audio_multipart(model: &str, bytes: &[u8], extension: &str, mime: &str) -> (String, Vec<u8>) {
     let boundary = format!("ChatNote{}", uuid::Uuid::new_v4().simple());
@@ -218,6 +393,130 @@ fn audio_multipart(model: &str, bytes: &[u8], extension: &str, mime: &str) -> (S
 mod tests {
     use super::*;
     use std::{collections::HashMap, sync::Mutex};
+    #[tokio::test]
+    async fn document_upload_reference_and_cleanup_preserve_the_local_file() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base = format!("http://{}/v1", listener.local_addr().unwrap());
+        let server = tokio::spawn(async move {
+            for method in ["POST /v1/files ", "DELETE /v1/files/file-fe-test "] {
+                let (mut socket, _) = listener.accept().await.unwrap();
+                let mut data = Vec::new();
+                let mut chunk = [0u8; 4096];
+                loop {
+                    let count = socket.read(&mut chunk).await.unwrap();
+                    assert!(count > 0);
+                    data.extend_from_slice(&chunk[..count]);
+                    if let Some(end) = data.windows(4).position(|w| w == b"\r\n\r\n") {
+                        let header = String::from_utf8_lossy(&data[..end]);
+                        let length = header
+                            .lines()
+                            .find_map(|line| {
+                                line.to_lowercase()
+                                    .strip_prefix("content-length:")
+                                    .and_then(|n| n.trim().parse::<usize>().ok())
+                            })
+                            .unwrap_or(0);
+                        if data.len() >= end + 4 + length {
+                            break;
+                        }
+                    }
+                }
+                let request = String::from_utf8_lossy(&data);
+                assert!(request.starts_with(method));
+                if method.starts_with("POST") {
+                    assert!(request.contains("file-extract"));
+                    assert!(request.contains("attachment.pdf"));
+                    assert!(request.contains("%PDF"));
+                }
+                let body = if method.starts_with("POST") {
+                    r#"{"id":"file-fe-test"}"#
+                } else {
+                    r#"{"deleted":true}"#
+                };
+                socket.write_all(format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",body.len()).as_bytes()).await.unwrap();
+            }
+        });
+        let state = runtime();
+        let a = save(&state, "lesson.pdf", "application/pdf", "document", b"%PDF");
+        let original = vec![json!({"role":"user","content":"Explain this file","attachments":[a]})];
+        let mut input = materialize(&original, "qwen-document", false, &state).unwrap();
+        let (_cancel_tx, cancel) = tokio::sync::watch::channel(false);
+        let mut uploaded = Vec::new();
+        tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            upload_documents(
+                &mut input,
+                &state,
+                &base,
+                "qwen-long",
+                "synthetic-test-secret",
+                &mut uploaded,
+                &cancel,
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        let request = prepare_qwen_input(input);
+        assert_eq!(request[0]["content"], "fileid://file-fe-test");
+        assert!(request[1]["content"]
+            .as_str()
+            .unwrap()
+            .contains("Explain this file"));
+        assert!(request[1].get("attachments").is_none());
+        assert!(clean_documents(&base, "synthetic-test-secret", &uploaded).await);
+        server.await.unwrap();
+        assert_eq!(load(&state, &a.id).unwrap().data, STANDARD.encode(b"%PDF"));
+    }
+    #[test]
+    fn qwen_media_routes_and_payloads_are_provider_specific() {
+        assert!(qwen_documents(
+            "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            "qwen-long"
+        ));
+        assert!(qwen_documents(
+            "https://space.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+            "qwen-doc-turbo"
+        ));
+        assert!(!qwen_documents("https://api.deepseek.com", "qwen-long"));
+        assert!(!qwen_documents(
+            "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            "qwen-plus"
+        ));
+        let body = qwen_audio_body("qwen3-asr-flash", "YWJj", "audio/webm");
+        assert_eq!(
+            body["messages"][0]["content"][0]["input_audio"]["data"],
+            "data:audio/webm;base64,YWJj"
+        );
+        assert_eq!(body["stream"], false);
+        let input = prepare_qwen_input(vec![
+            json!({"role":"user","content":"question","chatnote_file_ids":["file-fe-123"]}),
+            json!({"role":"assistant","content":"answer"}),
+        ]);
+        assert_eq!(
+            input[0],
+            json!({"role":"system","content":"fileid://file-fe-123"})
+        );
+        assert!(input[1].get("chatnote_file_ids").is_none());
+        assert_eq!(input[2]["content"], "answer");
+    }
+    #[test]
+    fn document_upload_multipart_uses_a_safe_filename_and_exact_bytes() {
+        let a = Attachment {
+            id: uuid::Uuid::new_v4().to_string(),
+            name: "unsafe\".pdf".into(),
+            mime: "application/pdf".into(),
+            size: 4,
+            kind: "document".into(),
+        };
+        let (boundary, body) = document_multipart(&a, b"%PDF");
+        let text = String::from_utf8_lossy(&body);
+        assert!(text.contains("file-extract"));
+        assert!(text.contains("filename=\"attachment.pdf\""));
+        assert!(!text.contains("unsafe"));
+        assert!(text.ends_with(&format!("--{boundary}--\r\n")));
+    }
     fn runtime() -> Runtime {
         Runtime {
             db: Mutex::new(

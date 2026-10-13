@@ -387,13 +387,20 @@ pub async fn generate(
         return Err("Invalid model request".into());
     }
     let base = endpoint(&request.provider, &request.endpoint)?;
+    let qwen_documents =
+        request.provider == "compatible" && crate::media::qwen_documents(&base, &request.model);
     request.input = crate::media::materialize(
         &request.input,
-        &request.provider,
+        if qwen_documents {
+            "qwen-document"
+        } else {
+            &request.provider
+        },
         request.image_input,
         &state,
     )?;
-    let body = request_body(&request)?;
+    let mut credential: Option<String> = None;
+    let mut uploaded = Vec::new();
     let (cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
     {
         let mut jobs = state.jobs.lock().map_err(|_| "Request lock failed")?;
@@ -403,13 +410,22 @@ pub async fn generate(
         jobs.insert(request.request_id.clone(), cancel_tx);
     }
     let result=async {
-        let secret=auth::credential(&request.provider,&base,request.profile_id.as_deref()).await?;let compatible=request.provider=="compatible";
+        let secret=auth::credential(&request.provider,&base,request.profile_id.as_deref()).await?;credential=Some(secret.clone());
+        let compatible=request.provider=="compatible";
+        if qwen_documents {crate::media::upload_documents(&mut request.input,&state,&base,&request.model,&secret,&mut uploaded,&cancel_rx).await?;request.input=crate::media::prepare_qwen_input(request.input.clone());}
+        if *cancel_rx.borrow() {return Ok(());}
+        let body=request_body(&request)?;
         let pending=send_request(client()?.post(format!("{base}/{}",if compatible{"chat/completions"}else{"responses"})).bearer_auth(&secret).json(&body));
         let response=tokio::select!{r=pending=>r.map_err(|error|transport_error(&error,"Could not connect to the model provider. Check your network."))?, _=cancel_rx.changed()=>return Ok(())};
         let response=checked(response,&secret).await?;let mut stream=response.bytes_stream();let mut parser=Sse::new();let mut complete=false;
         loop{let chunk=tokio::select!{chunk=stream.next()=>chunk,_=cancel_rx.changed()=>return Ok(())};let Some(chunk)=chunk else{break};for frame in parser.push(&chunk.map_err(|_|"The network connection was interrupted. Your partial answer was preserved.")?)?{match parse(&frame,compatible)?{Parsed::Delta(text)=>on_event.send(StreamEvent{r#type:"delta",text:Some(text),error:None}).map_err(|_|"The app window closed")?,Parsed::Done=>{complete=true;on_event.send(StreamEvent{r#type:"done",text:None,error:None}).map_err(|_|"The app window closed")?;},Parsed::Error(e)=>return Err(redact(&e,&secret)),Parsed::Ignore=>{}}}if complete{break;}}
         if !complete{return Err("The stream ended before a completed response. Your partial answer was preserved.".into());}Ok(())
     }.await;
+    if let Some(secret) = credential {
+        if !crate::media::clean_documents(&base, &secret, &uploaded).await {
+            let _=on_event.send(StreamEvent{r#type:"warning",text:None,error:Some("The temporary document could not be deleted from the provider. Remove it from the provider Files page.".into())});
+        }
+    }
     state
         .jobs
         .lock()
