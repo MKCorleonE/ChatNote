@@ -22,12 +22,14 @@ export function snapshot(session: Session, parentId: string | null, anchor: Anch
   const inherited = parent ? [...parent.sourceContext, { role: 'user' as const, content: `Parent annotation source: ${parent.anchor.quote}` }] : [];
   return [...inherited, ...source.slice(0, end + 1).filter(m => m.status === 'complete' || m.status === 'stopped').map(m => ({ role: m.role, content: m.text, ...(m.attachments?.length?{attachments:m.attachments}:{}) }))];
 }
-export function contextFor(session: Session, branch: Branch | null, budget = 48000): ContextReport {
-  const turns = activeMessages(branch ?? session).filter(m => m.role === 'user' || m.status === 'complete').map(m => ({ role: m.role, content: m.text, ...(m.attachments?.length?{attachments:m.attachments}:{}) }));
+export function contextFor(session: Session, branch: Branch | null, budget = 48000, currentQuestionId?:string|null): ContextReport {
+  const messages = activeMessages(branch ?? session).filter(m => m.role === 'user' || m.status === 'complete');
+  const turns = messages.map(m => ({ role: m.role, content: m.text, ...(m.attachments?.length?{attachments:m.attachments}:{}) }));
   const history = branch ? [...branch.sourceContext, ...turns] : turns;
   const quote: ContextItem[] = branch ? [{ role: 'user', content: `This is a passage-anchored follow-up. Answer the current question about this exact source.\n\n<source>\n${branch.anchor.quote}\n</source>` }] : [];
-  const candidates = [...quote, ...history], questionIndex=turns.map(item=>item.role).lastIndexOf('user');
-  return selectContext({source: branch ? 'Source snapshot + this annotation only' : 'Main conversation only', budget, characters:0, summarized:false, omittedTurns:0, items:[], candidates, sourceCount:branch?quote.length+branch.sourceContext.length:0, required:[...(branch?[0]:[]), ...(questionIndex>=0?[quote.length+history.length-turns.length+questionIndex]:[])]}, candidates.map((_,i)=>i));
+  const candidates = [...quote, ...history], questionIndex=currentQuestionId===null?-1:currentQuestionId?messages.findIndex(m=>m.id===currentQuestionId&&m.role==='user'):turns.map(item=>item.role).lastIndexOf('user');
+  const candidateKeys=[...(branch?[`quote:${branch.anchor.messageId}:${branch.anchor.revision}:${branch.anchor.start}:${branch.anchor.end}`,...branch.sourceContext.map((_,i)=>`source:${i}`)]:[]),...messages.map(m=>`message:${m.id}:${m.revision}`)];
+  return selectContext({source: branch ? 'Source snapshot + this annotation only' : 'Main conversation only', budget, characters:0, summarized:false, omittedTurns:0, items:[], candidates,candidateKeys, sourceCount:branch?quote.length+branch.sourceContext.length:0, required:[...(branch?[0]:[]), ...(questionIndex>=0?[quote.length+history.length-turns.length+questionIndex]:[])]}, candidates.map((_,i)=>i));
 }
 export function contextSize(items:ContextItem[]):number {
   return items.reduce((sum,item)=>sum+item.content.length+(item.attachments??[]).reduce((n,a)=>n+(a.kind==='text'?a.size:0),0),0);
@@ -59,6 +61,7 @@ export function validateWorkspace(data: unknown): asserts data is Workspace {
   const w = data as Workspace;
   const checkAttachments=(items:unknown)=>{if(items!==undefined&&(!Array.isArray(items)||items.length>8||items.some(a=>!validateAttachment(a))))throw new Error('Invalid attachment metadata.');};
   if (!w || w.version !== 1 || !Array.isArray(w.sessions) || w.sessions.length === 0 || w.sessions.length > 2000) throw new Error('This file is not a supported ChatNote backup.');
+  if(w.trash!==undefined&&(!Array.isArray(w.trash)||w.trash.length>2000||w.trash.some(e=>!e||!e.session||!Number.isSafeInteger(e.deletedAt)||e.deletedAt<=0)))throw new Error('Invalid recycle bin.');
   if(w.settings?.language!==undefined && typeof w.settings.language!=='string') throw new Error('Invalid settings.');
   if(w.settings?.followSystemTheme!==undefined&&typeof w.settings.followSystemTheme!=='boolean')throw new Error('Invalid settings.');
   if(w.settings?.historyPinned!==undefined&&typeof w.settings.historyPinned!=='boolean')throw new Error('Invalid settings.');
@@ -77,7 +80,7 @@ export function validateWorkspace(data: unknown): asserts data is Workspace {
   const catalogs=w.settings?.modelCatalogs;
   if(catalogs){if(typeof catalogs!=='object'||Array.isArray(catalogs)||Object.keys(catalogs).length>50)throw new Error('Invalid model catalogs.');for(const c of Object.values(catalogs)){if(!c||!['openai','chatgpt','compatible'].includes(c.provider)||typeof c.endpoint!=='string'||!Number.isFinite(c.updatedAt)||!Array.isArray(c.models)||c.models.length>1000||c.models.some(m=>!m||typeof m.id!=='string'||typeof m.name!=='string'||(m.reasoningEfforts!==undefined&&(!Array.isArray(m.reasoningEfforts)||m.reasoningEfforts.some(e=>!efforts.includes(e))))))throw new Error('Invalid model catalog.');}}
   const all = new Set<string>();
-  for (const s of w.sessions) {
+  for (const s of [...w.sessions,...(w.trash??[]).map(e=>e.session)]) {
     if (!s || typeof s.id !== 'string' || all.has(s.id) || typeof s.title !== 'string' || !Array.isArray(s.messages) || !Array.isArray(s.branches)) throw new Error('Invalid or duplicate conversation.'); all.add(s.id);
     const owners = new Map<string, string>(), records = new Map<string, string>();
     for (const thread of [s, ...s.branches]) {
@@ -106,11 +109,12 @@ export function validateWorkspace(data: unknown): asserts data is Workspace {
     for (const b of s.branches) { if (!b || typeof b.id !== 'string' || branchIds.has(b.id) || !Array.isArray(b.messages) || !Array.isArray(b.sourceContext) || b.sourceContext.some(i => !i || !['user','assistant'].includes(i.role) || typeof i.content !== 'string') || !b.anchor || !validAnchor(s, b.anchor)) throw new Error('A saved annotation has an invalid source.'); branchIds.add(b.id); }
     for (const b of s.branches) { if (b.parentId !== null) { const p = s.branches.find(p => p.id === b.parentId); if (!p || !threadMessages(p).some(m => m.id === b.anchor.messageId && m.revision === b.anchor.revision)) throw new Error('Invalid parent annotation.'); } else if (!threadMessages(s).some(m => m.id === b.anchor.messageId && m.revision === b.anchor.revision)) throw new Error('Invalid main source.'); ancestry(s, b.id); }
     if (!s.view || !['closed','tree','branch'].includes(s.view.mode) || typeof s.view.drafts !== 'object' || !s.view.positions || !Array.isArray(s.view.collapsed)) throw new Error('Invalid view state.');
+    const choices=s.view.contextSelections;if(choices!==undefined&&(!choices||typeof choices!=='object'||Array.isArray(choices)||Object.keys(choices).length>2000||Object.entries(choices).some(([key,ids])=>key.length>400||!Array.isArray(ids)||ids.length>20000||ids.some(id=>typeof id!=='string'||id.length>400))))throw new Error('Invalid context selection.');
   }
   if (!w.sessions.some(s => s.id === w.activeId) || !w.settings || !['openai','chatgpt','compatible'].includes(w.settings.provider) || typeof w.settings.model !== 'string' || typeof w.settings.endpoint !== 'string' || !['dark','light'].includes(w.settings.theme) || !Number.isFinite(w.settings.fontSize) || w.settings.fontSize < 12 || w.settings.fontSize > 22 || !Number.isFinite(w.settings.contextBudget) || w.settings.contextBudget < 8000 || w.settings.contextBudget > 500000 || typeof w.settings.annotations !== 'boolean') throw new Error('Invalid settings.');
   if(w.settings.profiles!==undefined){const profiles=w.settings.profiles;if(!Array.isArray(profiles)||!profiles.length||profiles.length>50)throw new Error('Invalid connection profiles.');const ids=new Set<string>();for(const p of profiles){if(!p||typeof p.id!=='string'||ids.has(p.id)||(!['legacy-openai','legacy-chatgpt','legacy-compatible'].includes(p.id)&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.id))||typeof p.name!=='string'||!p.name.trim()||p.name.length>70||!['openai','chatgpt','deepseek','qwen','custom'].includes(p.preset)||!['openai','chatgpt','compatible'].includes(p.provider)||typeof p.endpoint!=='string'||typeof p.model!=='string'||'key'in p||'apiKey'in p||'access_token'in p)throw new Error('Invalid or unsafe connection profile.');ids.add(p.id);}if(!profiles.some(p=>p.id===w.settings.activeProfileId))throw new Error('Active connection is missing.');}
 }
-export function recoverWorkspace(w: Workspace): Workspace { w.settings=migrateConnections(w.settings);w.settings.language=resolveLanguage(w.settings.language);for (const s of w.sessions) for (const m of sessionMessages(s)) if (m.status === 'streaming') { m.status = 'stopped'; m.error = 'Interrupted when the app closed. Your partial answer was preserved.'; } return w; }
+export function recoverWorkspace(w: Workspace): Workspace { w.settings=migrateConnections(w.settings);w.settings.language=resolveLanguage(w.settings.language);for (const s of [...w.sessions,...(w.trash??[]).map(e=>e.session)]) for (const m of sessionMessages(s)) if (m.status === 'streaming') { m.status = 'stopped'; m.error = 'Interrupted when the app closed. Your partial answer was preserved.'; } return w; }
 export function exportMarkdown(s: Session, language:Language='en'): string {
   const {t}=translator(language);
   const lines = [`# ${s.title}`, '', '> '+t('Created with ChatNote. Annotations keep their source and parent relationships.'), ''];

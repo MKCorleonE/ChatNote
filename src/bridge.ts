@@ -6,6 +6,7 @@ import type { Language } from './i18n';
 import type { Attachment } from './types';
 import { sessionMessages } from './message-history';
 import { maxAttachmentBytes, validateAttachment, transcriptionModel } from './attachments';
+import { expiredTrash, purgeTrash } from './trash';
 export const desktop = isTauri();
 const browserKey = 'chatnote-workspace-v1';
 let queue: Promise<void> = Promise.resolve();
@@ -15,14 +16,26 @@ export async function loadWorkspace(): Promise<Workspace | null> {
   if (desktop) raw = await invoke<string | null>('load_workspace');
   else raw = await new Promise<string | null>((resolve, reject) => { const r = indexedDB.open('chatnote', 2); r.onupgradeneeded = () => {if(!r.result.objectStoreNames.contains('workspace'))r.result.createObjectStore('workspace');if(!r.result.objectStoreNames.contains('attachments'))r.result.createObjectStore('attachments');}; r.onerror = () => reject(new Error('Cannot open browser storage.')); r.onsuccess = () => { const db = r.result; const q = db.transaction('workspace').objectStore('workspace').get(browserKey); q.onsuccess = () => { resolve(q.result ?? null); db.close(); }; q.onerror = () => { reject(new Error('Cannot read browser storage.')); db.close(); }; }; });
   if (!raw) return null;
-  const data = JSON.parse(raw); validateWorkspace(data); const info=desktop?await connection().catch(()=>null):null;data.settings=migrateConnections(data.settings,info?.legacyCompatibleEndpoint);return recoverWorkspace(data);
+  const data = JSON.parse(raw); validateWorkspace(data); const info=desktop?await connection().catch(()=>null):null;data.settings=migrateConnections(data.settings,info?.legacyCompatibleEndpoint);recoverWorkspace(data);
+  const expired=expiredTrash(data);if(!expired.length)return data;const next=purgeTrash(data,expired);await purgeWorkspace(data,next,expired);return next;
 }
 export function saveWorkspace(w: Workspace): Promise<void> {
   const raw = JSON.stringify(w);
-  queue = queue.catch(() => {}).then(async () => {
+  queue = queue.catch(() => {}).then(()=>persistWorkspace(raw));return queue;
+}
+async function persistWorkspace(raw:string):Promise<void> {
     if (desktop) return invoke<void>('save_workspace', { payload: raw });
     return new Promise<void>((resolve, reject) => { const r = indexedDB.open('chatnote', 2); r.onupgradeneeded = () => {if(!r.result.objectStoreNames.contains('workspace'))r.result.createObjectStore('workspace');if(!r.result.objectStoreNames.contains('attachments'))r.result.createObjectStore('attachments');}; r.onerror = () => reject(new Error('Cannot save in this browser. Export a backup.')); r.onsuccess = () => { const db = r.result, tx = db.transaction('workspace', 'readwrite'); tx.objectStore('workspace').put(raw, browserKey); tx.oncomplete = () => { resolve(); db.close(); }; tx.onerror = () => { reject(new Error('Saving failed. Export a backup.')); db.close(); }; }; });
-  }); return queue;
+}
+export function purgeWorkspace(before:Workspace,next:Workspace,sessionIds:string[]):Promise<void> {
+  validateWorkspace(next);const raw=JSON.stringify(next);
+  queue=queue.catch(()=>{}).then(async()=>{
+    // Flush the pre-deletion state before the atomic purge, including recently moved items.
+    await persistWorkspace(JSON.stringify(before));
+    if(desktop){await invoke('purge_conversations',{payload:raw,sessionIds});return;}
+    const candidates=referencedAttachments({...before,sessions:(before.trash??[]).filter(e=>sessionIds.includes(e.session.id)).map(e=>e.session),trash:[]}),retained=new Set(referencedAttachments(next).map(a=>a.id));
+    await new Promise<void>((resolve,reject)=>{const request=indexedDB.open('chatnote',2);request.onerror=()=>reject(new Error('Could not open the recycle bin'));request.onsuccess=()=>{const db=request.result,tx=db.transaction(['workspace','attachments'],'readwrite');tx.objectStore('workspace').put(raw,browserKey);for(const a of candidates)if(!retained.has(a.id))tx.objectStore('attachments').delete(a.id);tx.oncomplete=()=>{db.close();resolve();};tx.onabort=tx.onerror=()=>{db.close();reject(new Error('Recycle bin cleanup failed. Your saved records were preserved.'));};};});
+  });return queue;
 }
 export async function connection(): Promise<Connection> { return desktop ? invoke<Connection>('connection_status') : { apiKey: !!transientKeys.openai, compatibleKey: !!transientKeys.compatible, chatgpt: false }; }
 export async function setKey(provider: string, key: string, endpoint = 'https://api.openai.com/v1',profileId?:string) { if (desktop) await invoke('set_api_key', { provider, key, endpoint,profileId }); else transientKeys[profileId ?? provider] = key; }
@@ -57,7 +70,7 @@ export async function storeAttachment(record:StoredAttachment) {
 }
 export async function readAttachment(id:string):Promise<StoredAttachment> {return desktop?invoke('read_attachment',{id}):browserAttachment(id);}
 export function fileBase64(file:Blob):Promise<string> {return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error('Could not read the selected file'));reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.readAsDataURL(file);});}
-export function referencedAttachments(w:Workspace):Attachment[] {const records=new Map<string,Attachment>();const collect=(items:Attachment[]|undefined)=>{for(const a of items??[])records.set(a.id,a);};for(const s of w.sessions){for(const m of sessionMessages(s)){collect(m.attachments);for(const item of m.context?.items??[])collect(item.attachments);}for(const b of s.branches)for(const item of b.sourceContext)collect(item.attachments);for(const list of Object.values(s.view.attachmentDrafts??{}))collect(list);}return [...records.values()];}
+export function referencedAttachments(w:Workspace):Attachment[] {const records=new Map<string,Attachment>();const collect=(items:Attachment[]|undefined)=>{for(const a of items??[])records.set(a.id,a);};for(const s of [...w.sessions,...(w.trash??[]).map(e=>e.session)]){for(const m of sessionMessages(s)){collect(m.attachments);for(const item of m.context?.items??[])collect(item.attachments);}for(const b of s.branches)for(const item of b.sourceContext)collect(item.attachments);for(const list of Object.values(s.view.attachmentDrafts??{}))collect(list);}return [...records.values()];}
 export async function backupWorkspace(w:Workspace) {const bundledAttachments=[];for(const a of referencedAttachments(w))bundledAttachments.push(await readAttachment(a.id));return {...w,bundledAttachments};}
 export async function restoreAttachments(w:Workspace & {bundledAttachments?:StoredAttachment[]}) {const references=referencedAttachments(w);if(w.bundledAttachments!==undefined&&(!Array.isArray(w.bundledAttachments)||w.bundledAttachments.length>2000))throw new Error('Invalid attachment backup');for(const a of references){const record=w.bundledAttachments?.find(r=>r.attachment?.id===a.id);if(record){if(JSON.stringify(record.attachment)!==JSON.stringify(a))throw new Error('Invalid attachment backup');await storeAttachment(record);}else await readAttachment(a.id);}delete w.bundledAttachments;}
 export async function transcribe(profile:ConnectionProfile,blob:Blob):Promise<string> {if(!desktop)throw new Error('Speech transcription is available in the desktop app.');return invoke('transcribe',{provider:profile.provider,endpoint:profile.endpoint,profileId:profile.id,model:transcriptionModel(profile),data:await fileBase64(blob),mime:blob.type});}

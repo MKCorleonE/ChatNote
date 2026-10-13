@@ -2,6 +2,12 @@ import manifest from '../package.json';
 
 export const appVersion = manifest.version;
 export const releaseEntries = [
+  {version:'0.12.0',date:'2026-10-13',title:'Remembered context & personal space',changes:[
+    'Send directly by default; optional context choices stay with each conversation and follow-up.',
+    'Startup waits for your saved language before showing the motto.',
+    'Read the privacy policy in your language, and restore deleted conversations within 24 hours.',
+    'Find upcoming experiments and contact the developer to share feedback or help build ChatNote.',
+  ]},
   { version:'0.11.0', date:'2026-10-13', title:'Reading fixes & image previews', changes:[
     'Round markers now update during manual scrolling, including the initial conversation view.',
     'Image attachments show local thumbnails and open a larger preview without uploading.',
