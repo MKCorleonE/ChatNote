@@ -630,5 +630,16 @@
   "Connected map cards resize in the app and offline HTML; round markers follow your reading position.": "应用与离线 HTML 的导图卡片有连线并可调宽，对话刻度跟随阅读位置。",
   "Notifications last 2.5 seconds with spring motion; successful notebook and map exports celebrate with confetti.": "提示统一停留 2.5 秒并使用弹性动画；成功导出笔记和导图时发射彩带。",
   "Recording ready — choose transcription": "录音已就绪，请选择转写",
-  "Only current question": "仅当前问题"
+  "Only current question": "仅当前问题",
+  "Preview image": "预览图片",
+  "Image preview": "图片预览",
+  "Close image preview": "关闭图片预览",
+  "The local image could not be loaded. Attach the original image again.": "无法读取本地图片，请重新添加原图片。",
+  "Configure a voice API connection in Models & connections.": "请在“模型与连接”的语音输入设置中配置 API 连接。",
+  "Reading fixes & image previews": "阅读修复与图片预览",
+  "Round markers now update during manual scrolling, including the initial conversation view.": "修复刻度在首次显示和手动滚动时不更新的问题。",
+  "Image attachments show local thumbnails and open a larger preview without uploading.": "图片附件显示本地缩略图，可点开大图预览，不会因预览而上传。",
+  "Long main-thread context cards stay inside the preview window.": "修复主对话长上下文卡片撑出预览窗口的问题。",
+  "Voice setup is in Models & connections, and the microphone shortcut opens it directly.": "语音设置统一放入模型与连接，麦克风入口会直接定位到该设置。",
+  "Mind map expansion replays its spring animation on every opening.": "思维导图卡片每次展开都会重新播放弹性动画。"
 }

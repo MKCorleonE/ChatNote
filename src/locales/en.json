@@ -630,5 +630,16 @@
   "Connected map cards resize in the app and offline HTML; round markers follow your reading position.": "Connected map cards resize in the app and offline HTML; round markers follow your reading position.",
   "Notifications last 2.5 seconds with spring motion; successful notebook and map exports celebrate with confetti.": "Notifications last 2.5 seconds with spring motion; successful notebook and map exports celebrate with confetti.",
   "Recording ready — choose transcription": "Recording ready — choose transcription",
-  "Only current question": "Only current question"
+  "Only current question": "Only current question",
+  "Preview image": "Preview image",
+  "Image preview": "Image preview",
+  "Close image preview": "Close image preview",
+  "The local image could not be loaded. Attach the original image again.": "The local image could not be loaded. Attach the original image again.",
+  "Configure a voice API connection in Models & connections.": "Configure a voice API connection in Models & connections.",
+  "Reading fixes & image previews": "Reading fixes & image previews",
+  "Round markers now update during manual scrolling, including the initial conversation view.": "Round markers now update during manual scrolling, including the initial conversation view.",
+  "Image attachments show local thumbnails and open a larger preview without uploading.": "Image attachments show local thumbnails and open a larger preview without uploading.",
+  "Long main-thread context cards stay inside the preview window.": "Long main-thread context cards stay inside the preview window.",
+  "Voice setup is in Models & connections, and the microphone shortcut opens it directly.": "Voice setup is in Models & connections, and the microphone shortcut opens it directly.",
+  "Mind map expansion replays its spring animation on every opening.": "Mind map expansion replays its spring animation on every opening."
 }
