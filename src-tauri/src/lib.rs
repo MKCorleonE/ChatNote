@@ -3,6 +3,7 @@ mod media;
 mod network;
 #[cfg(test)]
 mod profile_tests;
+mod recycle_bin;
 mod storage;
 mod usage;
 mod vault;
@@ -48,6 +49,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             storage::load_workspace,
             storage::save_workspace,
+            recycle_bin::purge_conversations,
             auth::connection_status,
             auth::set_api_key,
             auth::profile_status,

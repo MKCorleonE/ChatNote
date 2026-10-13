@@ -7,6 +7,13 @@ import type { ConnectionProfile,Settings as Config } from './types';
 const fake=vi.hoisted(()=>({keys:new Map<string,{key:string;endpoint:string}>(),models:vi.fn(),usage:vi.fn(),generate:vi.fn(),setKey:vi.fn(),signIn:vi.fn(),cancelSignIn:vi.fn(),checkSignInService:vi.fn()}));
 vi.mock('./bridge',()=>({desktop:true,profileStatus:async(p:ConnectionProfile)=>({hasKey:fake.keys.has(p.id),endpointMatches:!fake.keys.has(p.id)||fake.keys.get(p.id)!.endpoint===p.endpoint,connected:p.provider==='chatgpt'||fake.keys.has(p.id),planUsage:p.provider==='chatgpt',email:p.provider==='chatgpt'?'test@example.invalid':undefined}),setKey:async(provider:string,key:string,endpoint:string,id:string)=>{fake.setKey(provider,key,endpoint,id);if(key)fake.keys.set(id,{key,endpoint});else fake.keys.delete(id);},models:(...args:unknown[])=>fake.models(...args),usage:(...args:unknown[])=>fake.usage(...args),generate:fake.generate,openUrl:vi.fn(),signIn:fake.signIn,cancelSignIn:fake.cancelSignIn,checkSignInService:fake.checkSignInService,signOut:vi.fn()}));
 import Settings from './Settings';
+import { exampleSession } from './core';
+
+test('Privacy, experiments and contribution contacts are available; recycle bin deletion requires explicit confirmation',async()=>{
+ const user=userEvent.setup(),restored=vi.fn(),purged=vi.fn(async()=>{}),entry={session:exampleSession(),deletedAt:Date.now()};render(<Settings value={migrateConnections(defaultSettings)} trash={[entry]} onRestore={restored} onPurge={purged} onChange={()=>{}} onClose={()=>{}} onNotice={()=>{}}/>);
+ await user.click(screen.getByRole('button',{name:'Privacy'}));expect(screen.getByRole('heading',{name:'Privacy policy'})).toBeDefined();expect(screen.getByText('5. Retention and deletion')).toBeDefined();await user.click(screen.getByRole('button',{name:'Laboratory'}));expect(screen.getByText('Experimental features coming soon')).toBeDefined();await user.click(screen.getByRole('button',{name:'Improve ChatNote together'}));expect(screen.getByRole('heading',{name:'Suggestions & feedback'})).toBeDefined();expect(screen.getByRole('heading',{name:'Join the development plan'})).toBeDefined();expect(screen.getByText('529023573@qq.com')).toBeDefined();expect(screen.getByText('1006863642')).toBeDefined();
+ await user.click(screen.getByRole('button',{name:'Recycle bin'}));await user.click(screen.getByRole('checkbox',{name:'Select conversation: '+entry.session.title}));await user.click(screen.getByRole('button',{name:'Delete selected now'}));expect(purged).not.toHaveBeenCalled();await user.click(within(screen.getByRole('dialog',{name:'Permanently delete conversations?'})).getByRole('button',{name:'Cancel'}));expect(purged).not.toHaveBeenCalled();await user.click(screen.getByRole('button',{name:'Delete selected now'}));await user.click(within(screen.getByRole('dialog',{name:'Permanently delete conversations?'})).getByRole('button',{name:'Delete'}));await waitFor(()=>expect(purged).toHaveBeenCalledWith([entry.session.id]));await user.click(screen.getByRole('button',{name:'Empty recycle bin'}));await user.click(within(screen.getByRole('dialog',{name:'Permanently delete conversations?'})).getByRole('button',{name:'Delete'}));await waitFor(()=>expect(purged).toHaveBeenCalledTimes(2));expect(fake.generate).not.toHaveBeenCalled();
+});
 
 test('Follow system saves a compatible fallback and switching to an explicit theme clears it without inference',async()=>{
   const saved=vi.fn(),user=userEvent.setup();render(<Settings value={migrateConnections(defaultSettings)} onChange={saved} onClose={()=>{}} onNotice={()=>{}}/>);
@@ -50,7 +57,7 @@ test('Settings navigation retains edits across pages and saves them without infe
 test('Data actions, about, local release history and searchable original license notices are reachable',async()=>{
   const user=userEvent.setup(),backup=vi.fn(),restore=vi.fn();
   render(<Settings value={migrateConnections(defaultSettings)} onChange={()=>{}} onClose={()=>{}} onNotice={()=>{}} onBackup={backup} onImport={restore}/>);
-  await user.click(screen.getByRole('button',{name:'Data & privacy'}));
+  await user.click(screen.getByRole('button',{name:'Data & backups'}));
   await user.click(screen.getByRole('button',{name:'Back up workspace'}));await user.click(screen.getByRole('button',{name:'Import backup'}));
   expect(backup).toHaveBeenCalledTimes(1);expect(restore).toHaveBeenCalledTimes(1);
   await user.click(screen.getByRole('button',{name:'About'}));await user.click(screen.getByRole('button',{name:'View changelog'}));

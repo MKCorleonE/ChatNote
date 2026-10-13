@@ -1,7 +1,8 @@
+import { PrivacyPolicy, Laboratory, ImproveChatNote, RecycleBin } from './PreferencePages';
 import appIcon from '../app-icon.png';
 import { systemTheme } from './useTheme';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { X, Check, ArrowUpRight, LoaderCircle, Plus, Settings as SettingsIcon, Info, BookOpen, Shield, Palette, Cable, ArrowDownToLine, FilePlus2 } from 'lucide-react';
+import { X, Check, ArrowUpRight, LoaderCircle, Plus, Settings as SettingsIcon, Info, BookOpen, Shield, Palette, Cable, ArrowDownToLine, FilePlus2, FlaskConical, Trash2, HeartHandshake } from 'lucide-react';
 import type { ConnectionProfile, Model, Preset, ProfileStatus, Settings as Config, UsageInfo } from './types';
 import * as bridge from './bridge';
 import { languages, resolveLanguage, type Language } from './i18n';
@@ -16,6 +17,10 @@ import { glowDefaults } from './composer-options';
 import { supportsImages, supportsVoice, transcriptionModel } from './attachments';
 interface Props {
   value: Config;
+  trash?:import('./types').TrashedConversation[];
+  trashBusy?:boolean;
+  onRestore?:(id:string)=>void;
+  onPurge?:(ids:string[])=>Promise<void>;
   voiceSetup?:boolean;
   closing?: boolean;
   onBackup?: () => void;
@@ -27,7 +32,7 @@ interface Props {
   onLanguageChange?: (language:Language)=>void|Promise<void>;
 }
 export default function Settings({
-  value,
+  value, trash=[],trashBusy=false,onRestore,onPurge,
   voiceSetup = false,
   onChange,
   onClose,
@@ -52,12 +57,16 @@ export default function Settings({
       { id: 'connections', label: 'Models & connections', icon: Cable },
       { id: 'reading', label: 'Reading & context', icon: BookOpen },
       { id: 'appearance', label: 'Appearance', icon: Palette },
-      { id: 'data', label: 'Data & privacy', icon: Shield },
+      { id: 'data', label: 'Data & backups', icon: Shield },
+      { id: 'privacy', label: 'Privacy', icon: Shield },
+      { id: 'trash', label: 'Recycle bin', icon: Trash2 },
+      { id: 'lab', label: 'Laboratory', icon: FlaskConical },
     ] },
     { title: 'About', items: [
       { id: 'about', label: 'About', icon: Info },
       { id: 'changelog', label: 'Changelog', icon: BookOpen },
       { id: 'licenses', label: 'Open-source licenses', icon: Shield },
+      { id: 'improve', label: 'Improve ChatNote together', icon: HeartHandshake },
     ] },
   ];
   useEffect(() => { dialogRef.current?.querySelector('.settings-scroll')?.scrollTo({ top: 0 }); }, [page]);
@@ -185,9 +194,9 @@ export default function Settings({
   const glow = {...glowDefaults, ...config.composerGlow};
   const highlight = {...highlightDefaults, ...config.annotationHighlight};
   return <div className={`modal-backdrop settings-backdrop ${closing ? 'leaving' : ''}`} onClick={e => {
-    if (e.target === e.currentTarget && !busy) onClose();
+    if (e.target === e.currentTarget && !busy && !trashBusy) onClose();
   }}><section inert={closing} ref={dialogRef} className="settings modal" onKeyDown={e => {
-      if (e.key === 'Escape') { e.stopPropagation(); if (!busy) onClose(); }
+      if (e.key === 'Escape') { e.stopPropagation(); if (!busy&&!trashBusy) onClose(); }
       if (e.key === 'Tab') {
         const items = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), summary, a[href], [tabindex="0"]')).filter(el => !el.closest('[hidden]'));
         const first = items[0], last = items.at(-1);
@@ -195,12 +204,12 @@ export default function Settings({
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
       }
     }} role="dialog" aria-modal="true" aria-label={t("Settings")}>
-    <header><h2><SettingsIcon size={19} />{t("Settings")}</h2><button data-close-settings className="icon-button" onClick={onClose} disabled={busy} aria-label={t("Close settings")}><X size={18} /></button></header>
-    <div className="settings-body"><nav className="settings-nav" aria-label={t('Settings navigation')}>{navigation.map(group => <div className="settings-nav-group" key={group.title}><span className="settings-group-title">{t(group.title)}</span>{group.items.map(({ id, label, icon: Icon }) => <button key={id} aria-current={page === id ? 'page' : undefined} className={page === id ? 'selected' : ''} onClick={() => setPage(id)}><Icon size={15}/><span>{t(label)}</span></button>)}</div>)}</nav>
+    <header><h2><SettingsIcon size={19} />{t("Settings")}</h2><button data-close-settings className="icon-button" onClick={onClose} disabled={busy||trashBusy} aria-label={t("Close settings")}><X size={18} /></button></header>
+    <div className="settings-body"><nav className="settings-nav" aria-label={t('Settings navigation')}>{navigation.map(group => <div className="settings-nav-group" key={group.title}><span className="settings-group-title">{t(group.title)}</span>{group.items.map(({ id, label, icon: Icon }) => <button key={id} disabled={trashBusy} aria-current={page === id ? 'page' : undefined} className={page === id ? 'selected' : ''} onClick={() => setPage(id)}><Icon size={15}/><span>{t(label)}</span></button>)}</div>)}</nav>
     <div className="settings-scroll">
     <section hidden={page !== 'connections'} className="settings-page" aria-label={t('Models & connections')}><h3 className="settings-page-title">{t('Models & connections')}</h3><h3>{t("Saved connections")}</h3><p className="muted">{t("Each connection keeps its own address, model and secure key. Switching never changes your conversations.")}</p>
     <div className="connection-list">{config.profiles!.map(p => <button className={`connection-choice ${p.id === editingId ? 'selected' : ''}`} key={p.id} disabled={busy} onClick={() => select(p.id)}><span>{p.name}</span><small>{p.id === config.activeProfileId ? <><Check size={11} />{t("In use")}</> : t(presets.find(x => x.id === p.preset)?.name ?? '')}</small></button>)}</div>
-    <div className="add-connection"><ChoiceMenu label={t("Connection preset")} value={preset} onChange={value=>setPreset(value as Preset)} disabled={busy} placement="below" options={presets.map(p=>({value:p.id,label:t(p.name)}))}/><button disabled={busy || config.profiles!.length >= 50} onClick={add}><Plus size={13} />{t("Add connection")}</button></div>
+    <div className="add-connection"><ChoiceMenu label={t("Connection preset")} value={preset} onChange={value=>setPreset(value as Preset)} disabled={busy} placement="below" options={presets.map(p=>({value:p.id,label:t(p.name)}))}/><button disabled={busy || trashBusy || config.profiles!.length >= 50} onClick={add}><Plus size={13} />{t("Add connection")}</button></div>
     <div className="connection-heading"><span className="small-label">{t(source.name)}</span><button className={profile.id === config.activeProfileId ? 'text-button' : 'primary'} disabled={busy || profile.id === config.activeProfileId || config.profiles!.some(p => !p.name.trim())} onClick={() => action(async () => {
             await saveKey();
             const next = activateProfile(config, profile.id);
@@ -273,14 +282,15 @@ export default function Settings({
             ...c,
             annotations: e.target.checked
           }))} />{t("Passage annotations")}<span className="small muted">{t("Turning off hides indicators without deleting saved annotations.")}</span></label>
-    <div className="setting-field"><span>{t("Context budget")}</span><ChoiceMenu label={t('Context budget')} placement="below" value={String(config.contextBudget)} options={[16000,48000,96000,192000].map(count=>({value:String(count),label:t('characterCount',{count:n(count)})}))} onChange={value=>setConfig(c=>({...c,contextBudget:Number(value)}))}/><span className="small muted">{t("Applied to every chat request: selected text above this character budget is shortened into labelled excerpts before you confirm sending. This is not a token limit or an answer-length limit; original history remains saved.")}</span></div>
+    <div className="setting-field"><span>{t("Context budget")}</span><ChoiceMenu label={t('Context budget')} placement="below" value={String(config.contextBudget)} options={[16000,48000,96000,192000].map(count=>({value:String(count),label:t('characterCount',{count:n(count)})}))} onChange={value=>setConfig(c=>({...c,contextBudget:Number(value)}))}/><span className="small muted">{t("Applied to every chat request: selected text above this character budget is shortened into labelled excerpts. You can inspect the result before sending or beside the answer. This is not a token limit or an answer-length limit; original history remains saved.")}</span></div>
 
-    </section><section hidden={page !== 'data'} className="settings-page" aria-label={t('Data & privacy')}><h3 className="settings-page-title">{t('Data & privacy')}</h3><p>{t('Conversations, annotations, private notes and drafts are saved on this device.')}</p><div className="settings-info-card"><Shield size={20}/><div><strong>{t('Credentials stay in the system vault')}</strong><p className="muted">{t('Workspace backups contain conversations and connection metadata, never API keys or sign-in tokens.')}</p></div></div><div className="button-row"><button disabled={busy || dataBusy || !onBackup} onClick={onBackup}><ArrowDownToLine size={14}/>{t('Back up workspace')}</button><button disabled={busy || dataBusy || !onImport} onClick={onImport}><FilePlus2 size={14}/>{t('Import backup')}</button></div><p className="small muted">{t('Imported conversations are added as copies. Existing records and connections are kept.')}</p><p className="muted">{t('Only the context you send is passed to your selected model provider. Cloud sync and collaboration are not included.')}</p></section>
+    </section><section hidden={page !== 'data'} className="settings-page" aria-label={t('Data & backups')}><h3 className="settings-page-title">{t('Data & backups')}</h3><p>{t('Conversations, annotations, private notes and drafts are saved on this device.')}</p><div className="settings-info-card"><Shield size={20}/><div><strong>{t('Credentials stay in the system vault')}</strong><p className="muted">{t('Workspace backups contain conversations and connection metadata, never API keys or sign-in tokens.')}</p></div></div><div className="button-row"><button disabled={busy || dataBusy || !onBackup} onClick={onBackup}><ArrowDownToLine size={14}/>{t('Back up workspace')}</button><button disabled={busy || dataBusy || !onImport} onClick={onImport}><FilePlus2 size={14}/>{t('Import backup')}</button></div><p className="small muted">{t('Imported conversations are added as copies. Existing records and connections are kept.')}</p><p className="muted">{t('Only the context you send is passed to your selected model provider. Cloud sync and collaboration are not included.')}</p></section>
     <section hidden={page !== 'about'} className="settings-page" aria-label={t('About')}><h3 className="settings-page-title">{t('About')}</h3><div className="about-brand"><span><img src={appIcon} alt="" aria-hidden="true"/></span><div><h2>ChatNote</h2><p className="muted">{t('Version')} {appVersion} · Windows</p></div></div><p>{t('A conversation-based learning notebook.')}</p><p className="muted">{t('Follow the main conversation, explore passages in annotations, and keep your own notes.')}</p><div className="settings-info-card"><Info size={19}/><p>{t('Private preview release. ChatNote source and downloads require repository access. Third-party components retain their own licenses.')}</p></div><button className="text-button" onClick={() => void bridge.openUrl('https://github.com/MKCorleonE/ChatNote').catch(e => setError(friendlyError(e)))}>{t('Project repository')}<ArrowUpRight size={13}/></button><p className="small muted">{t('Updates are installed manually. Close the old app before installing; keep a workspace backup for rollback.')}</p><button onClick={() => setPage('changelog')}>{t('View changelog')}</button></section>
     <section hidden={page !== 'changelog'} className="settings-page" aria-label={t('Changelog')}><h3 className="settings-page-title">{t('Changelog')}</h3><p className="muted">{t('Updates are installed manually. Close the old app before installing; keep a workspace backup for rollback.')}</p>{releaseEntries.map(entry => <article className="release-entry" key={entry.version}><div><strong>v{entry.version}</strong><span className="small muted">{entry.date}</span></div><h3>{t(entry.title)}</h3><ul>{entry.changes.map(change => <li key={change}>{t(change)}</li>)}</ul></article>)}<button className="text-button" onClick={() => void bridge.openUrl('https://github.com/MKCorleonE/ChatNote/releases').catch(e => setError(friendlyError(e)))}>{t('All releases')}<ArrowUpRight size={13}/></button></section>
     <section hidden={page !== 'licenses'} className="settings-page" aria-label={t('Open-source licenses')}>{page === 'licenses' && <Suspense fallback={<p className="muted" role="status">{t('Loading licenses…')}</p>}><LicenseNotices/></Suspense>}</section>
+    {['privacy','trash','lab','improve'].includes(page)&&<section key={page} className="settings-page" aria-label={t(page==='privacy'?'Privacy':page==='trash'?'Recycle bin':page==='lab'?'Laboratory':'Improve ChatNote together')}>{page==='privacy'?<PrivacyPolicy/>:page==='trash'?<RecycleBin entries={trash} busy={trashBusy} onRestore={onRestore} onPurge={onPurge}/>:page==='lab'?<Laboratory/>:<ImproveChatNote onNotice={onNotice}/>}</section>}
     {page !== 'connections' && error && <div role="alert" className="connection-error"><strong>{t(error.title)}</strong><p>{t(error.message)}</p></div>}
-    </div></div><footer><span className="small muted">ChatNote · {appVersion}</span><button className="primary" disabled={busy || config.profiles!.some(p => !p.name.trim())} onClick={() => action(async () => {
+    </div></div><footer><span className="small muted">ChatNote · {appVersion}</span><button className="primary" disabled={busy || trashBusy || config.profiles!.some(p => !p.name.trim())} onClick={() => action(async () => {
           await saveKey();
           await onChange(syncActive(config));
           onClose();

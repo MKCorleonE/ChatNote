@@ -1,3 +1,5 @@
+import { applyContextSelection, savedContextSelection } from './context-preferences';
+import { trashConversation, restoreConversation, purgeTrash } from './trash';
 import { ContextDialog } from './ContextDialog';
 import { ConversationRuler } from './ConversationRuler';
 import { Toast } from './Toast';
@@ -7,7 +9,7 @@ import { useTheme } from './useTheme';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { ArrowDownToLine, ArrowLeft, ArrowUp, BookOpen, Check, ChevronDown, Copy, FilePlus2, TreeDeciduous, Menu, MessageSquare, MoreHorizontal, Mic, Maximize2, NotebookText, Network, Pin, PinOff, Plus, Search, Settings as SettingsIcon, Square, Trash2, X } from 'lucide-react';
 import * as bridge from './bridge';
-import { ancestry, contextFor, emptyWorkspace, exampleSession, exportMarkdown, makeAnchor, message, recoverWorkspace, snapshot, uid, validAnchor, validateWorkspace } from './core';
+import { ancestry, contextFor, emptyWorkspace, exampleSession, exportMarkdown, makeAnchor, message, recoverWorkspace, selectContext, snapshot, uid, validAnchor, validateWorkspace } from './core';
 import type { Anchor, Branch, ContextReport, Message, Session, View, Workspace } from './types';
 import { RichText } from './RichText';
 import Settings from './Settings';
@@ -26,7 +28,7 @@ import { QuestionBubble } from './QuestionBubble';
 import { MessageTime, useMessageClock } from './MessageTime';
 import { activeMessages, appendThread, editDraftKey, editThread, questionVersions, restoreSourcePath, switchThreadPath } from './message-history';
 import type { CatalogSnapshot, ReasoningEffort } from './types';
-import { affectedBranches, deleteAnswer, deleteConversation, hasConversation, startConversation } from './conversation-management';
+import { affectedBranches, deleteAnswer, hasConversation, startConversation } from './conversation-management';
 import { DeleteDialog } from './DeleteDialog';
 import { FollowUpTree } from './FollowUpTree';
 import { RenameDialog } from './RenameDialog';
@@ -57,6 +59,9 @@ type Job = {
 const noteDraftKey=(anchor:Anchor)=>`note:${anchor.messageId}:${anchor.revision}:${anchor.start}:${anchor.end}`;
 const safeName = (s: string) => s.replace(/[<>:"/\\|?*\x00-\x1f]/g, '-').slice(0, 90) || 'ChatNote';
 export default function App() {
+  const [trashBusy,setTrashBusy]=useState(false);
+  const purging=useRef(false);
+  const [contextSelectionKey,setContextSelectionKey]=useState('main');
   const [settingsVoice,setSettingsVoice]=useState(false);
   const [w, setW] = useState<Workspace | null>(null),
     [loadError, setLoadError] = useState(''),
@@ -89,7 +94,7 @@ export default function App() {
   const messageNow = useMessageClock();
   useEffect(() => { document.documentElement.lang = language; }, [language]);
   const [welcome,setWelcome]=useState(false),[updatedWelcome,setUpdatedWelcome]=useState(false),[treeOverview,setTreeOverview]=useState(false),[notebook,setNotebook]=useState(false),[mediaBusy,setMediaBusy]=useState(false),[mindMap,setMindMap]=useState(false),[starting,setStarting]=useState(true);
-  useEffect(()=>{const timer=setTimeout(()=>setStarting(false),1500);return()=>clearTimeout(timer);},[]);
+  useEffect(()=>{if(!w)return;const timer=setTimeout(()=>setStarting(false),1500);return()=>clearTimeout(timer);},[!!w]);
   const startupPresence=usePresence(starting,300);
   const [voice,setVoice]=useState<{sessionId:string;key:string;where:'main'|'branch';profile:ConnectionProfile}|null>(null);
   const [pendingVoice,setPendingVoice]=useState<{sessionId:string;key:string;where:'main'|'branch';text:string}|null>(null);
@@ -175,11 +180,12 @@ export default function App() {
     };
   }, []);
   useEffect(() => {
-    if (!w) return;
+    if (!w||purging.current) return;
     const version = ++saveVersion.current;
     setSaved('Saving…');
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
+      if(purging.current)return;
       bridge.saveWorkspace(w).then(() => {
         if (version === saveVersion.current) setSaved('Saved on this device');
       }).catch(e => {
@@ -190,7 +196,7 @@ export default function App() {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [w, job, notify]);
+  }, [w, job, trashBusy, notify]);
   useEffect(() => {
     const flush = () => {
       if (wRef.current) void bridge.saveWorkspace(wRef.current).catch(() => {});
@@ -497,15 +503,16 @@ export default function App() {
       setJob(null);
     }
   }
+  function contextKey(where:'main'|'branch') {return where==='main'?'main':draft?`source:${draft.parentId??'main'}:${draft.anchor.messageId}:${draft.anchor.revision}:${draft.anchor.start}:${draft.anchor.end}`:current?.view.branchId??'new';}
   function previewContext(where:'main'|'branch') {
     if(!current||!w||jobRef.current)return;
     const key=where==='main'?'main':draft?'new':current.view.branchId??'new';
     if(current.view.drafts[key]?.trim()||current.view.attachmentDrafts?.[key]?.length){send(where,true);return;}
     const b=where==='branch'?(draft?{id:uid(),parentId:draft.parentId,anchor:draft.anchor,messages:[],createdAt:Date.now(),sourceContext:snapshot(current,draft.parentId,draft.anchor)}:branch):null;
-    try{setContextPreview(true);setPendingSend(null);setContext(contextFor(current,b??null,w.settings.contextBudget));}catch(error){notify(String(error));}
+    try{const key=contextKey(where);setContextSelectionKey(key);setContextPreview(true);setPendingSend(null);setContext(applyContextSelection(contextFor(current,b??null,w.settings.contextBudget),current.view.contextSelections?.[key]));}catch(error){notify(String(error));}
   }
   function send(where: 'main' | 'branch' , previewOnly=false, edit?: Message) {
-    if (!current || !w || jobRef.current || mediaBusy) return;
+    if (!current || !w || jobRef.current || mediaBusy || purging.current) return;
     const targetBranchId = where === 'main' ? null : current.view.branchId;
     const draftKey = edit ? editDraftKey(targetBranchId, edit) : where === 'main' ? 'main' : draft ? 'new' : current.view.branchId ?? 'new';
     const files=edit?.attachments??current.view.attachmentDrafts?.[draftKey]??[];
@@ -576,7 +583,7 @@ export default function App() {
     }
     let report: ContextReport;
     try {
-      report = contextFor(next, b ? next.branches.find(x => x.id === b.id)! : null, w.settings.contextBudget);
+      report = applyContextSelection(contextFor(next, b ? next.branches.find(x => x.id === b.id)! : null, w.settings.contextBudget), current.view.contextSelections?.[contextKey(where)]);
     } catch (e) {
       notify(String(e));
       return;
@@ -584,7 +591,9 @@ export default function App() {
     const mediaError=attachmentError(report.items.flatMap(i=>i.attachments??[]),activeProfile(w.settings)!);
     answer.context = report;
     const plan={next,report,settings:{...w.settings},draftKey,question,attachmentIds:files.map(a=>a.id).join(','),branchId:b?.id??null,answerId:answer.id,edit:edit?{id:edit.id,revision:edit.revision}:undefined};
-    if(previewOnly||report.summarized||mediaError||where==='branch'){setContextPreview(true);setContext(report);setPendingSend(plan);return;}
+    if(previewOnly){setContextSelectionKey(contextKey(where));setContextPreview(true);setContext(report);setPendingSend(plan);return;}
+    if(mediaError){notify(t(mediaError));return;}
+    if(report.summarized)notify(t('Context was shortened to fit your budget. You can inspect the sent context beside the answer.'));
     executeSend(plan);
   }
   function executeSend(plan:NonNullable<typeof pendingSend>){
@@ -592,13 +601,13 @@ export default function App() {
     if(!bridge.desktop){notify('Use the Windows app to connect a model. This preview supports reading and annotations.');return;}
     if(!settings.model.trim()){setSettings(true);notify('Connect a provider and choose a model first.');return;}
     const mediaError=attachmentError(report.items.flatMap(i=>i.attachments??[]),activeProfile(settings)!);if(mediaError){notify(t(mediaError));return;}
-    const {candidates:_candidates,required:_required,selected:_selected,...receipt}=report;
+    const {candidates:_candidates,candidateKeys:_keys,required:_required,selected:_selected,...receipt}=report;
     for(const thread of [next,...next.branches]){const answer=thread.messages.find(m=>m.id===answerId);if(answer)answer.context=receipt;}
 
     const active=wRef.current?.sessions.find(s=>s.id===wRef.current!.activeId);
     const activeThread = branchId ? active?.branches.find(b=>b.id===branchId) : active;
     if(!active||active.id!==next.id||(active.view.drafts[draftKey]?.trim()||((active.view.attachmentDrafts?.[draftKey]?.length??0)?t('Explain the attached materials.'):''))!==question||(!edit&&(active.view.attachmentDrafts?.[draftKey]??[]).map(a=>a.id).join(',')!==attachmentIds)||(edit&&(!activeThread||!activeMessages(activeThread).some(m=>m.id===edit.id&&m.revision===edit.revision)))||jobRef.current||wRef.current?.settings.endpoint!==settings.endpoint||wRef.current?.settings.provider!==settings.provider||wRef.current?.settings.contextBudget!==settings.contextBudget||wRef.current?.settings.activeProfileId!==settings.activeProfileId||wRef.current?.settings.model!==settings.model||wRef.current?.settings.reasoningEffort!==settings.reasoningEffort){setPendingSend(null);setContext(null);notify('The draft changed. Preview it again before sending.');return;}
-    following.current[branchId?'panel':'main']=true;remember();updateSession(next.id,s=>({...next,view:{...next.view,positions:s.view.positions}}));
+    following.current[branchId?'panel':'main']=true;remember();updateSession(next.id,s=>({...next,view:{...next.view,positions:s.view.positions,contextSelections:{...s.view.contextSelections,...(branchId&&draft&&s.view.contextSelections?.[contextKey('branch')]!==undefined?{[branchId]:s.view.contextSelections[contextKey('branch')]}:{})}}}));
     setPendingSend(null);setContext(null);
     setDraft(null);
     setSelection(null);
@@ -705,6 +714,7 @@ export default function App() {
       setW(prev => prev ? {
         ...prev,
         sessions: [...copies, ...prev.sessions],
+        trash:[...(data.trash??[]).map(e=>({...e,session:{...e.session,id:uid()}})),...prev.trash??[]],
         activeId: copies[0].id
       } : prev);
       setDraft(null);
@@ -725,10 +735,10 @@ export default function App() {
     const state=wRef.current,target=pendingDelete;if(!state||!target)return;
     if(jobRef.current){notify('Stop generation before deleting.');return;}
     try{
-      const next=target.messageId?{...state,sessions:state.sessions.map(s=>s.id===target.sessionId?deleteAnswer(s,target.messageId!):s)}:deleteConversation(state,target.sessionId,t('New conversation'));
+      const next=target.messageId?{...state,sessions:state.sessions.map(s=>s.id===target.sessionId?deleteAnswer(s,target.messageId!):s)}:trashConversation(state,target.sessionId,t('New conversation'));
       validateWorkspace(next);setW(next);setPendingDelete(null);setMore(false);
       if(state.activeId===target.sessionId){const updated=next.sessions.find(s=>s.id===next.activeId)!;if(!target.messageId||draft&&!validAnchor(updated,draft.anchor))setDraft(null);if(!target.messageId||selection&&!validAnchor(updated,selection.anchor))setSelection(null);setEditing(null);setPendingSend(null);setContext(null);setPromotion(null);}
-      notify(target.messageId?'Question and answers deleted.':'Conversation deleted.');
+      notify(target.messageId?'Question and answers deleted.':t('Conversation moved to the recycle bin.'));
     }catch(error){notify(String(error));}
   }
   async function copyMessage(m: Message) {
@@ -780,7 +790,7 @@ export default function App() {
         }
       }} /><div className="composer-footer"><ModelControls settings={w!.settings} {...modelCatalog} disabled={!!job} onProfile={id=>setW(prev=>prev?{...prev,settings:activateProfile(prev.settings,id)}:prev)} onModel={model=>{const supported=supportedEfforts(w!.settings.provider,model,modelCatalog.catalog);updateProfile({model,reasoningEffort:supported.includes(w!.settings.reasoningEffort!)?w!.settings.reasoningEffort:undefined});}} onEffort={reasoningEffort=>updateProfile({reasoningEffort})} onRefresh={()=>void modelCatalog.refresh()} onSettings={()=>setSettings(true)} onNotice={notify}/><div className="composer-actions"><AttachmentControls key={`${current!.id}:${key}`} items={files} profile={activeProfile(w!.settings)!} disabled={!!job||mediaBusy} onBusy={setMediaBusy} onChange={items=>setAttachments(key,items,current!.id)} onNotice={notify}/><button type="button" className="icon-button composer-mic" disabled={!!job||mediaBusy} aria-label={t('Voice input')} title={t('Voice input')} onClick={()=>startVoice(where,key)}><Mic size={17}/></button><button type="button" className="text-button context-preview" disabled={!!job} onClick={()=>previewContext(where)}>{t('Preview context')}</button>{job ? <button className="send stop" type="button" onClick={stop} aria-label={t("Stop generation")}><Square size={13} fill="currentColor" /></button> : <button className="send" type="submit" disabled={mediaBusy||!current?.view.drafts[key]?.trim()&&!files.length} aria-label={where === 'main' ? t("Send main message") : t("Send annotation message")}><ArrowUp size={18} /></button>}</div></div><div className="composer-hint"><span>{t(where === 'main' ? 'Main conversation' : 'Only in this annotation')}</span><span>{t('Enter to send · Alt+Enter for a new line')}</span></div></form>;
   }
-  if (!w || !current) return <div className="boot"><div className="brand-symbol"><img src={appIcon} alt="" aria-hidden="true"/></div><h1>ChatNote</h1><p className="boot-motto">{t('Explore every question without losing the thread.')}</p><p>{loadError || t("Opening your workspace\u2026")}</p>{loadError && <><p className="muted">{t("Your existing records have not been replaced. Close and reopen, or restore a backup.")}</p><input type="file" accept=".json" onChange={async e => {
+  if (!w || !current) return <div className="boot"><div className="brand-symbol"><img src={appIcon} alt="" aria-hidden="true"/></div><h1>ChatNote</h1>{loadError?<><p className="boot-motto">{t('Explore every question without losing the thread.')}</p><p>{loadError}</p></>:<span className="startup-pulse"/>}{loadError && <><p className="muted">{t("Your existing records have not been replaced. Close and reopen, or restore a backup.")}</p><input type="file" accept=".json" onChange={async e => {
         const file = e.target.files?.[0];
         if (!file) return;
         try {
@@ -839,7 +849,7 @@ export default function App() {
       left: selection.x,
       top: selection.y
     }} onMouseDown={e => e.preventDefault()}><span>{selection.anchor.quote.slice(0, 25)}</span><button onClick={createAnnotation}><Plus size={14} />{t("Ask in annotation")}</button></div>}
-    {settingsPresence.rendered && <Settings voiceSetup={settingsVoice} closing={settingsPresence.leaving} onBackup={() => void backup()} onImport={() => importRef.current?.click()} dataBusy={!!job} value={w.settings} onLanguageChange={async chosen=>{remember();if(!wRef.current)return;const next={...wRef.current,settings:{...wRef.current.settings,language:chosen}};setW(next);setSelection(null);setNotice('');await bridge.saveWorkspace(next);}} onChange={async s => {
+    {settingsPresence.rendered && <Settings trash={w.trash??[]} trashBusy={trashBusy||!!job} onRestore={id=>{if(jobRef.current||purging.current)return;remember();setW(prev=>prev?restoreConversation(prev,id):prev);setDraft(null);setSelection(null);setEditing(null);setContext(null);setPendingSend(null);setPromotion(null);notify(t('Conversation restored.'));}} onPurge={async ids=>{const before=wRef.current;if(!before||jobRef.current||purging.current)return;purging.current=true;setTrashBusy(true);if(saveTimer.current)clearTimeout(saveTimer.current);try{await bridge.purgeWorkspace(before,purgeTrash(before,ids),ids);setW(prev=>prev?purgeTrash(prev,ids):prev);notify(t('Recycle bin items permanently deleted.'));}catch(e){notify(String(e));}finally{purging.current=false;setTrashBusy(false);}}} voiceSetup={settingsVoice} closing={settingsPresence.leaving} onBackup={() => void backup()} onImport={() => importRef.current?.click()} dataBusy={!!job} value={w.settings} onLanguageChange={async chosen=>{remember();if(!wRef.current)return;const next={...wRef.current,settings:{...wRef.current.settings,language:chosen}};setW(next);setSelection(null);setNotice('');await bridge.saveWorkspace(next);}} onChange={async s => {
       if (!wRef.current) return;
       const next = {
         ...wRef.current,
@@ -848,9 +858,9 @@ export default function App() {
       setW(next);
       await bridge.saveWorkspace(next);
     }} onClose={() => {setSettings(false);setSettingsVoice(false);setCatalogEpoch(x=>x+1);}} onNotice={notify} />}
-    {pendingDelete&&<DeleteDialog title={t(pendingDelete.messageId?'Delete answer':'Delete conversation…')} description={pendingDelete.messageId?t('Delete this question and its answers? Retries in this turn and linked annotations or notes will also be deleted. Other turns and question versions stay.'):t('deleteConversationPrompt',{name:w.sessions.find(s=>s.id===pendingDelete.sessionId)?.title??''})} detail={pendingDelete.messageId&&affectedBranches(w.sessions.find(s=>s.id===pendingDelete.sessionId)!,pendingDelete.messageId).size?t('deleteLinkedAnnotations',{count:n(affectedBranches(w.sessions.find(s=>s.id===pendingDelete.sessionId)!,pendingDelete.messageId).size)}):undefined} onCancel={()=>setPendingDelete(null)} onDelete={confirmDeletion}/>}
+    {pendingDelete&&<DeleteDialog recoverable={!pendingDelete.messageId} title={t(pendingDelete.messageId?'Delete answer':'Delete conversation…')} description={pendingDelete.messageId?t('Delete this question and its answers? Retries in this turn and linked annotations or notes will also be deleted. Other turns and question versions stay.'):t('deleteConversationPrompt',{name:w.sessions.find(s=>s.id===pendingDelete.sessionId)?.title??''})} detail={pendingDelete.messageId&&affectedBranches(w.sessions.find(s=>s.id===pendingDelete.sessionId)!,pendingDelete.messageId).size?t('deleteLinkedAnnotations',{count:n(affectedBranches(w.sessions.find(s=>s.id===pendingDelete.sessionId)!,pendingDelete.messageId).size)}):undefined} onCancel={()=>setPendingDelete(null)} onDelete={confirmDeletion}/>}
     {renaming && <RenameDialog key={renaming.sessionId} title={renaming.title} onCancel={()=>setRenaming(null)} onSave={title=>{updateSession(renaming.sessionId,s=>({...s,title}));setRenaming(null);}}/>}
-    {context&&<ContextDialog report={context} preview={contextPreview} instructions={instructions} capabilityError={contextPreview?attachmentError(context.items.flatMap(i=>i.attachments??[]),activeProfile(pendingSend?.settings??w.settings)!):null} canSend={!!pendingSend&&bridge.desktop} onChange={report=>{setContext(report);setPendingSend(plan=>plan?{...plan,report}:null);}} onSend={()=>{if(pendingSend)executeSend(pendingSend);}} onClose={()=>{setContext(null);setPendingSend(null);}} onNotice={notify}/>}
+    {context&&<ContextDialog report={context} preview={contextPreview} instructions={instructions} capabilityError={contextPreview?attachmentError(context.items.flatMap(i=>i.attachments??[]),activeProfile(pendingSend?.settings??w.settings)!):null} canSend={!!pendingSend&&bridge.desktop} onReset={()=>{const report=selectContext(context, (context.candidates??context.items).map((_,i)=>i));setContext(report);setPendingSend(plan=>plan?{...plan,report}:null);updateSession(current.id,s=>{const choices={...s.view.contextSelections};delete choices[contextSelectionKey];return {...s,view:{...s.view,contextSelections:choices}};});}} onChange={report=>{setContext(report);setPendingSend(plan=>plan?{...plan,report}:null);updateSession(current.id,s=>({...s,view:{...s.view,contextSelections:{...s.view.contextSelections,[contextSelectionKey]:savedContextSelection(report)}}}));}} onSend={()=>{if(pendingSend)executeSend(pendingSend);}} onClose={()=>{setContext(null);setPendingSend(null);}} onNotice={notify}/>}
     {promotion && <div className="modal-backdrop"><section className="modal" role="dialog" aria-modal="true" aria-label={t("Bring conclusion to main")}><header><h2>{t("Bring a conclusion back")}</h2><button className="icon-button" aria-label={t("Cancel conclusion")} onClick={() => setPromotion(null)}><X size={18} /></button></header><p className="muted">{t("Edit the conclusion before adding it to the main conversation. Its source stays linked.")}</p><textarea className="promotion-text" value={promotion.text} onChange={e => setPromotion({
           ...promotion,
           text: e.target.value
