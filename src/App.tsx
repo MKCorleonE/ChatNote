@@ -231,6 +231,7 @@ export default function App() {
       const win = getCurrentWindow();
       const unlisten = await win.onCloseRequested(async event => {
         event.preventDefault();
+        if(purging.current){notify('Saving…');return;}
         try {
           jobRef.current?.controller.abort();
           if (wRef.current) await bridge.saveWorkspace(wRef.current);
