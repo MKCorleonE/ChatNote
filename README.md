@@ -1,5 +1,7 @@
 # ChatNote
 
+[官网与公开下载](https://mkcorleone.github.io/chatnote-site/) · [三语快速开始](https://mkcorleone.github.io/chatnote-site/guide.html)。官网源文件与公开安装包位于[独立公开仓库](https://github.com/MKCorleonE/chatnote-site)，应用源码继续私有。
+
 源码与版本历史保存在 [ChatNote 私有仓库](https://github.com/MKCorleonE/ChatNote)。开发与发布步骤见 [GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md)。
 
 ChatNote 是独立的跨平台对话式学习软件项目，目标平台为 **iPadOS、macOS、iOS、Windows、Android**。
@@ -24,15 +26,15 @@ Windows v0.12.0：默认直接发送并记住主动选择的上下文范围，�
 
 - 本地安装包：`releases/ChatNote_0.12.0_x64-setup.exe`；直接启动：`releases/ChatNote_0.12.0.exe`。
 - [v0.12.0 使用与验证](docs/V0.12.0_VALIDATION.md)
-- [正式下载 v0.12.0](https://github.com/MKCorleonE/ChatNote/releases/tag/v0.12.0)
-- [上一稳定版 v0.11.0](https://github.com/MKCorleonE/ChatNote/releases/tag/v0.11.0)
+- [公开下载 v0.12.0](https://github.com/MKCorleonE/chatnote-site/releases/tag/v0.12.0)
+- [公开回退版 v0.11.0](https://github.com/MKCorleonE/chatnote-site/releases/tag/v0.11.0)
 - [版本保留规则](docs/RELEASE_POLICY.md)
 - [国际化维护说明](docs/INTERNATIONALIZATION.md)
 - [v0.1.0 基线验证](docs/BUILD_AND_VALIDATION.md)
 
 146项前端全量、28项常规原生检查通过；真实账号请求、麦克风、安装升级与手感仍待用户验收。DeepSeek 支持图片和 UTF-8 文本，PDF/Office 与语音转写暂不支持；上下文预算是本次请求文字的本地字符预算。
 
-升级时先关闭旧版及开发预览/启动服务，再启动新版或安装，无需退出账号。常用目录保留0.12.0与0.11.0，0.10.0及更早交付归档保留；原对话、锚点、草稿、附件、连接与凭据保留。私有下载需要仓库权限。
+升级时先关闭旧版及开发预览/启动服务，再启动新版或安装，无需退出账号。常用目录保留0.12.0与0.11.0，0.10.0及更早交付归档保留；原对话、锚点、草稿、附件、连接与凭据保留。公开下载不需要仓库权限；原私有Release继续保留。[官网行动清单与验证](docs/WEBSITE_LAUNCH_VALIDATION.md)。
 
 圆角图标与跟随系统主题预览已纳入 0.8.0；预览过程保留。[本轮说明](docs/PREVIEW_ROUNDED_ICON_SYSTEM_THEME.md)。
 
