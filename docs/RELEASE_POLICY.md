@@ -4,7 +4,7 @@
 
 本轮0.12.0交付后，常用目录保留0.12.0＋上一稳定版0.11.0；0.10.0及更早移入 releases/archive/ 对应目录。归档前后核对 SHA-256，原始交付文件不重建或替换，非版本化个人导出继续保留；早期 Release 不伪造源码历史。
 
-[0.12.0使用与交付](V0.12.0_VALIDATION.md) / [0.12.0私有Release](https://github.com/MKCorleonE/ChatNote/releases/tag/v0.12.0) / [0.11.0回退](https://github.com/MKCorleonE/ChatNote/releases/tag/v0.11.0)。0.10.0 已补齐 main 合并和正式 Release；0.11.0 按同一 CI、标签及资产校验流程发布。仓库保持私有。
+[0.12.0使用与交付](V0.12.0_VALIDATION.md) / [0.12.0私有Release](https://github.com/MKCorleonE/ChatNote/releases/tag/v0.12.0) / [0.11.0回退](https://github.com/MKCorleonE/ChatNote/releases/tag/v0.11.0)。0.10.0 已补齐 main 合并和正式 Release；0.12.0已按CI、标签及资产校验流程正式发布，37项本地与3项远程资产校验通过。仓库保持私有。
 
 ## 哪些文件保留
 
