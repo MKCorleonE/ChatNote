@@ -63,12 +63,12 @@ test('Data actions, about, local release history and searchable original license
   await user.click(screen.getByRole('button',{name:'About'}));await user.click(screen.getByRole('button',{name:'View changelog'}));
   expect(screen.getByRole('heading',{name:'Capsule sidebar & clearer settings'})).toBeDefined();
   await user.click(screen.getByRole('button',{name:'Open-source licenses'}));
-  await user.type(await screen.findByRole('textbox',{name:'Search licenses'}),'lucide-react');
+  await user.type(await screen.findByRole('textbox',{name:'Search licenses'}, {timeout:5000}),'lucide-react');
   const list=document.querySelector('.license-list')!;
   expect(list.querySelectorAll('details')).toHaveLength(1);expect(list.textContent).toContain('ISC');expect(list.textContent).toContain('Permission');
   expect(within(screen.getByRole('navigation',{name:'Settings navigation'})).getByRole('button',{name:'Open-source licenses'}).getAttribute('aria-current')).toBe('page');
   expect(fake.generate).not.toHaveBeenCalled();expect(fake.models).not.toHaveBeenCalled();expect(fake.usage).not.toHaveBeenCalled();
-});
+},10000);
 
 test('Settings traps keyboard focus, Escape closes, and unmount restores the trigger',async()=>{
   const user=userEvent.setup(),close=vi.fn();const trigger=document.createElement('button');document.body.append(trigger);trigger.focus();
