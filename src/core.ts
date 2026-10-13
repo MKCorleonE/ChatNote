@@ -22,12 +22,12 @@ export function snapshot(session: Session, parentId: string | null, anchor: Anch
   const inherited = parent ? [...parent.sourceContext, { role: 'user' as const, content: `Parent annotation source: ${parent.anchor.quote}` }] : [];
   return [...inherited, ...source.slice(0, end + 1).filter(m => m.status === 'complete' || m.status === 'stopped').map(m => ({ role: m.role, content: m.text, ...(m.attachments?.length?{attachments:m.attachments}:{}) }))];
 }
-export function contextFor(session: Session, branch: Branch | null, budget = 48000): ContextReport {
+export function contextFor(session: Session, branch: Branch | null, budget = 48000, currentQuestionId?:string|null): ContextReport {
   const messages = activeMessages(branch ?? session).filter(m => m.role === 'user' || m.status === 'complete');
   const turns = messages.map(m => ({ role: m.role, content: m.text, ...(m.attachments?.length?{attachments:m.attachments}:{}) }));
   const history = branch ? [...branch.sourceContext, ...turns] : turns;
   const quote: ContextItem[] = branch ? [{ role: 'user', content: `This is a passage-anchored follow-up. Answer the current question about this exact source.\n\n<source>\n${branch.anchor.quote}\n</source>` }] : [];
-  const candidates = [...quote, ...history], questionIndex=turns.map(item=>item.role).lastIndexOf('user');
+  const candidates = [...quote, ...history], questionIndex=currentQuestionId===null?-1:currentQuestionId?messages.findIndex(m=>m.id===currentQuestionId&&m.role==='user'):turns.map(item=>item.role).lastIndexOf('user');
   const candidateKeys=[...(branch?[`quote:${branch.anchor.messageId}:${branch.anchor.revision}:${branch.anchor.start}:${branch.anchor.end}`,...branch.sourceContext.map((_,i)=>`source:${i}`)]:[]),...messages.map(m=>`message:${m.id}:${m.revision}`)];
   return selectContext({source: branch ? 'Source snapshot + this annotation only' : 'Main conversation only', budget, characters:0, summarized:false, omittedTurns:0, items:[], candidates,candidateKeys, sourceCount:branch?quote.length+branch.sourceContext.length:0, required:[...(branch?[0]:[]), ...(questionIndex>=0?[quote.length+history.length-turns.length+questionIndex]:[])]}, candidates.map((_,i)=>i));
 }

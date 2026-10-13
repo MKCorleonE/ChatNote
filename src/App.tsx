@@ -509,7 +509,7 @@ export default function App() {
     const key=where==='main'?'main':draft?'new':current.view.branchId??'new';
     if(current.view.drafts[key]?.trim()||current.view.attachmentDrafts?.[key]?.length){send(where,true);return;}
     const b=where==='branch'?(draft?{id:uid(),parentId:draft.parentId,anchor:draft.anchor,messages:[],createdAt:Date.now(),sourceContext:snapshot(current,draft.parentId,draft.anchor)}:branch):null;
-    try{const key=contextKey(where);setContextSelectionKey(key);setContextPreview(true);setPendingSend(null);setContext(applyContextSelection(contextFor(current,b??null,w.settings.contextBudget),current.view.contextSelections?.[key]));}catch(error){notify(String(error));}
+    try{const key=contextKey(where);setContextSelectionKey(key);setContextPreview(true);setPendingSend(null);setContext(applyContextSelection(contextFor(current,b??null,w.settings.contextBudget,null),current.view.contextSelections?.[key]));}catch(error){notify(String(error));}
   }
   function send(where: 'main' | 'branch' , previewOnly=false, edit?: Message) {
     if (!current || !w || jobRef.current || mediaBusy || purging.current) return;
