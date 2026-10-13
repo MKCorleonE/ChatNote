@@ -4,6 +4,8 @@
 
 ## 执行进度
 
+当前官网已按用户确认的方向重构为1.1.0：森林主线滚动开场、原座右铭、三个精简功能及下载。移除展示视频，下载/FAQ/联系改为独立页，三语共27页；客户端仍0.12.0。[重构设计与验证](WEBSITE_FOREST_REDESIGN.md)。下表中的首发素材记录保留为历史。
+
 | 项目 | 状态 |
 | --- | --- |
 | 独立仓库 | [MKCorleonE/chatnote-site](https://github.com/MKCorleonE/chatnote-site)，公开；只包含官网、公开说明与合成素材 |

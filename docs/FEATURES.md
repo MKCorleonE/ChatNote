@@ -4,6 +4,8 @@
 
 状态：已实现 / 待开发 / 待验证 / 候选 / 已验收。自动测试、助手实际检查和用户验证分别记录；Windows 的完成状态不扩展为其他平台已完成。
 
+官网1.1.0（2026-10-13）：恢复原座右铭，以五树与主线构成可回退的滚动开场；精简为三个功能及下载，移除视频，详情转入独立三语页面。27页构建、29个HTML及561条资源链接、1280/390/320px布局与功能示意检查通过；真实设备手感待用户体验。客户端0.12.0及原下载不变。[重构验证](WEBSITE_FOREST_REDESIGN.md)。
+
 官网首发（2026-10-13，客户端仍0.12.0）：[独立公开官网](https://mkcorleone.github.io/chatnote-site/)与[公开下载区](https://github.com/MKCorleonE/chatnote-site/releases)，应用源码保持私有。三语首页/指南/隐私/使用说明/更新日志/试用清单、合成截图与45秒导览、可交互导图、版本化校验及回退信息已建设；真实设备/API/网络试用待人工完成。[行动清单](GITHUB_PAGES_LAUNCH_PLAN.md) / [建站验证](WEBSITE_LAUNCH_VALIDATION.md)。
 
 v0.1.0 历史状态：Windows 初版已交付，用户反馈 ChatGPT 套餐登录和对话成功。初版测试边界见 [验证记录](BUILD_AND_VALIDATION.md)。当前版本与新增 idea 见 [版本记录](CHANGELOG_AND_IDEAS.md)，最新连接升级如下。
