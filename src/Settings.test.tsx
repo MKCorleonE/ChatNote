@@ -88,7 +88,7 @@ test('A stalled browser sign-in can be cancelled and retried without replacing c
   await user.click(screen.getByRole('button',{name:'Cancel sign-in'}));await screen.findByText('Sign-in cancelled');
   expect(fake.cancelSignIn).toHaveBeenCalledTimes(1);expect(saved).not.toHaveBeenCalled();expect(value).toEqual(original);
   await user.click(screen.getByRole('button',{name:'Continue with ChatGPT'}));await waitFor(()=>expect(screen.getByRole('button',{name:'Continue with ChatGPT'}).hasAttribute('disabled')).toBe(false));
-  expect(fake.signIn).toHaveBeenCalledTimes(2);expect(fake.signIn).toHaveBeenLastCalledWith(false,'en');expect(fake.generate).not.toHaveBeenCalled();
+  expect(fake.signIn).toHaveBeenCalledTimes(2);expect(fake.signIn).toHaveBeenLastCalledWith(false,'zh-Hans');expect(fake.generate).not.toHaveBeenCalled();
 });
 test('The sign-in connection check reports reachability without credentials, inference or sign-in',async()=>{
   const user=userEvent.setup(),saved=vi.fn();fake.checkSignInService.mockResolvedValue('Sign-in service is reachable. Browser authorization can still fail independently.');

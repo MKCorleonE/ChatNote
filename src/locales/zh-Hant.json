@@ -682,7 +682,7 @@
   "Your selection is remembered for this conversation or follow-up. New history stays excluded until selected; the current question is always included.": "選擇會在這條主線或追問中保留。新產生的歷史需重新勾選才會攜帶；本次問題一律攜帶。",
   "Context was shortened to fit your budget. You can inspect the sent context beside the answer.": "上下文已依預算縮略，可在回答旁查看實際傳送的內容。",
   "Applied to every chat request: selected text above this character budget is shortened into labelled excerpts. You can inspect the result before sending or beside the answer. This is not a token limit or an answer-length limit; original history remains saved.": "每次聊天請求都套用此字元預算；超出時轉為清楚標示的摘錄。可主動預覽或在回答旁查看實際傳送內容。這不是Token上限或回答長度限制，原始歷史仍完整儲存。",
-  "privacy.effective": "生效日期：2026年10月13日 · ChatNote 0.13.0",
+  "privacy.effective": "生效日期：2026年10月13日 · ChatNote 0.14.0",
   "privacy.introduction": "ChatNote由獨立開發者維護，是以本機儲存為主的學習筆記應用程式。本政策說明目前桌面版、所選模型服務及自願聯絡管道如何處理資料。查看本頁不會傳送資料，也不會替你開通服務。",
   "privacy.local.title": "1. 本機儲存的資料",
   "privacy.local.body": "對話、回答、精確原文錨點、追問、個人筆記、草稿、附件、連線中繼資料、偏好及資源回收筒時間儲存在你的裝置上。桌面版使用本機SQLite資料庫，瀏覽器預覽使用瀏覽器儲存。目前沒有開發者託管的對話同步、廣告或內建統計上傳。ChatNote不會加密本機資料庫及匯出檔案，請妥善保護裝置與備份。",
@@ -744,5 +744,11 @@
   "update.saveFailed": "工作區儲存失敗，已停止更新。請匯出備份後重試。",
   "update.wait": "請先結束回答產生、錄音或檔案操作，再重新啟動更新。",
   "update.busy": "更新操作正在進行中。",
-  "update.checkFirst": "請先檢查並下載更新。"
+  "update.checkFirst": "請先檢查並下載更新。",
+  "A quieter start & focused notebooks": "更簡潔的開始與專注筆記",
+  "Start in Simplified Chinese on a fresh workspace; preserve saved language choices.": "新工作區預設簡體中文，保留已儲存的語言選擇。",
+  "Show a quiet empty notebook until the conversation has answers; never organize empty material.": "對話有回答後才顯示筆記工具，不對空白材料發起模型整理。",
+  "Simplify About and the new conversation screen, and hide the browser context menu.": "精簡關於與新對話介面，關閉瀏覽器預設右鍵選單。",
+  "Offer installers only on the official download page.": "官網統一提供安裝程式下載。",
+  "This conversation has no questions and answers yet. Explore, then come back.": "這個對話還沒有問答，探索之後再回來看看。"
 }

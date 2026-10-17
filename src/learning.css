@@ -17,3 +17,5 @@
 @media(prefers-reduced-motion:reduce){.directory-node,.welcome-guide,.guide-step,.tree-overview,.speech-recorder,.learning-note-dialog,.recording-orb.recording,.attachment-chip{animation:none!important}.guide-progress button.active{transform:none}.directory-open,.window-controls button{transition:none}}
 
 .startup-overlay.leaving{animation:startup-leave .3s ease-out both;pointer-events:none}@keyframes startup-leave{to{opacity:0;transform:scale(1.035)}}@media(prefers-reduced-motion:reduce){.startup-overlay.leaving{animation:none!important;opacity:0}}
+
+.notebook-empty{flex:1;min-height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:32px 24px;text-align:center}.notebook-empty-icon{display:grid;place-items:center;width:54px;height:54px;border:1px solid var(--line);border-radius:12px;color:var(--accent);background:color-mix(in srgb,var(--accent) 5%,transparent)}.notebook-empty p{margin:0;max-width:420px;color:var(--muted);font-size:13px;line-height:1.9}

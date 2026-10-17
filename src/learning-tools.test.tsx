@@ -9,6 +9,12 @@ import { catalogs } from './i18n';
 import { I18nProvider } from './I18nProvider';
 import { editThread } from './message-history';
 
+test('Organization rejects empty, unanswered, failed and blank responses before a model request can be built',()=>{
+  const w=emptyWorkspace(),s=w.sessions[0];
+  for(const messages of [[],[message('user','Question')],[message('user','Question'),message('assistant','','error')],[message('user','Question'),message('assistant','   ')]]){s.messages=messages;expect(()=>learningRequest(s,w.settings,'zh-Hans')).toThrow('This conversation has no questions and answers yet.');}
+  s.messages=[message('user','Question'),message('assistant','A partial answer','stopped')];expect(()=>learningRequest(s,w.settings,'zh-Hans')).not.toThrow();
+});
+
 test('Mind map preserves main rounds, nested branches and archived-source branches without rewriting the session',()=>{
   const s=exampleSession(),b=s.branches[0],anchor=makeAnchor(b.messages[1],0,16),child={id:crypto.randomUUID(),parentId:b.id,anchor,messages:[message('user','Nested question'),message('assistant','Nested answer $x^2$')],createdAt:0,sourceContext:snapshot(s,b.id,anchor)};
   s.branches.push(child);s.branches[0]=editThread(b,b.messages[0].id,'New parent question',message('assistant','New parent answer'));

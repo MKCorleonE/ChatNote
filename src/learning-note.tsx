@@ -12,6 +12,9 @@ import type { StoredAttachment } from './bridge';
 const escape=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 export function noteMarkdown(text:string):string {return renderToStaticMarkup(<Markdown remarkPlugins={[remarkGfm,remarkMath]} rehypePlugins={[guardMath,[rehypeKatex,{strict:'ignore',trust:false,output:'mathml'}],mathFallback]} components={{img:({alt})=><span>{alt}</span>,a:({children})=><span>{children}</span>}}>{normalizeMath(text).text}</Markdown>);}
 const messageId=(m:Message)=>`message-${m.id}-${m.revision}`;
+export function hasLearningAnswers(s:Session):boolean {
+  return [s,...s.branches].some(thread=>activeMessages(thread).some(m=>m.role==='assistant'&&!!m.text.trim()&&(m.status==='complete'||m.status==='stopped')));
+}
 export function noteSources(s:Session):string {
   const parts=[`Learning topic: ${s.title}`];
   for(const thread of [s,...s.branches]){if('anchor'in thread)parts.push(`Follow-up ${thread.id}, parent ${thread.parentId??'main'}, exact source: ${thread.anchor.quote}`);else parts.push('Main conversation');for(const m of activeMessages(thread))if((m.role==='user'||m.status==='complete'||m.status==='stopped')&&m.text)parts.push(`${m.attachments?.length?'[Attachment contents omitted: '+m.attachments.map(a=>a.name).join(', ')+']\n':''}[${messageId(m)} ${m.role}${m.status==='stopped'?' PARTIAL':''}]\n${m.text}`);}
