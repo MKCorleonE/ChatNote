@@ -19,6 +19,7 @@ src-tauri/gen/
 *.pem
 *.key
 /releases/*.exe
+/releases/*.sig
 /releases/archive/
 /*.mp4
 /*.zip
