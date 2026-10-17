@@ -682,7 +682,7 @@
   "Your selection is remembered for this conversation or follow-up. New history stays excluded until selected; the current question is always included.": "Your selection is remembered for this conversation or follow-up. New history stays excluded until selected; the current question is always included.",
   "Context was shortened to fit your budget. You can inspect the sent context beside the answer.": "Context was shortened to fit your budget. You can inspect the sent context beside the answer.",
   "Applied to every chat request: selected text above this character budget is shortened into labelled excerpts. You can inspect the result before sending or beside the answer. This is not a token limit or an answer-length limit; original history remains saved.": "Applied to every chat request: selected text above this character budget is shortened into labelled excerpts. You can inspect the result before sending or beside the answer. This is not a token limit or an answer-length limit; original history remains saved.",
-  "privacy.effective": "Effective: 13 October 2026 · ChatNote 0.13.0",
+  "privacy.effective": "Effective: 13 October 2026 · ChatNote 0.14.0",
   "privacy.introduction": "ChatNote is a local-first learning notebook maintained by an independent developer. This policy describes the data handled by the current desktop app, your model providers, and voluntary contact channels. Reading this page does not send data or enroll you in a service.",
   "privacy.local.title": "1. Data on your device",
   "privacy.local.body": "Conversations, answers, exact passage anchors, follow-ups, personal notes, drafts, attachments, connection metadata, preferences, and recycle bin timestamps are stored on your device. The desktop app uses a local SQLite database; browser previews use browser storage. ChatNote currently has no developer-hosted conversation sync, advertising, or built-in analytics upload. Local databases and exported files are not encrypted by ChatNote; protect your device and backups.",
@@ -744,5 +744,11 @@
   "update.saveFailed": "Could not save your workspace. The update was stopped; export a backup and try again.",
   "update.wait": "Finish generation, recording, or file operations before restarting to update.",
   "update.busy": "An update operation is already running.",
-  "update.checkFirst": "Check and download the update first."
+  "update.checkFirst": "Check and download the update first.",
+  "A quieter start & focused notebooks": "A quieter start & focused notebooks",
+  "Start in Simplified Chinese on a fresh workspace; preserve saved language choices.": "Start in Simplified Chinese on a fresh workspace; preserve saved language choices.",
+  "Show a quiet empty notebook until the conversation has answers; never organize empty material.": "Show a quiet empty notebook until the conversation has answers; never organize empty material.",
+  "Simplify About and the new conversation screen, and hide the browser context menu.": "Simplify About and the new conversation screen, and hide the browser context menu.",
+  "Offer installers only on the official download page.": "Offer installers only on the official download page.",
+  "This conversation has no questions and answers yet. Explore, then come back.": "This conversation has no questions and answers yet. Explore, then come back."
 }

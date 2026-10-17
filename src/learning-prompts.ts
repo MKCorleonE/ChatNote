@@ -1,5 +1,5 @@
 import { translator, type Language } from './i18n';
-import { noteSources } from './learning-note';
+import { hasLearningAnswers, noteSources } from './learning-note';
 import type { Generation, LearningPreferences, Session, Settings } from './types';
 
 export const subjects = ['general', 'math', 'computing', 'science', 'humanities'] as const;
@@ -17,6 +17,7 @@ export function learningPrompt(preferences: LearningPreferences | undefined, lan
 }
 // Use the same immutable snapshot for preview and send. Never include vault values or local notes.
 export function learningRequest(session: Session, settings: Settings, language: Language): Generation {
+  if(!hasLearningAnswers(session))throw new Error('This conversation has no questions and answers yet. Explore, then come back.');
   return { requestId: crypto.randomUUID(), provider: settings.provider, endpoint: settings.endpoint,
     profileId: settings.activeProfileId, model: settings.model,
     input: [{ role: 'user', content: noteSources(session) }],

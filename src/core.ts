@@ -6,7 +6,7 @@ import { efforts } from './composer-options';
 import { validateAttachment } from './attachments';
 import { activeMessages, sessionMessages, threadMessages, threadPaths } from './message-history';
 export const uid = () => crypto.randomUUID();
-export const defaultSettings = { provider: 'openai' as const, endpoint: 'https://api.openai.com/v1', model: '', language:'en' as Language, fontSize: 15, annotations: true, theme: 'dark' as const, contextBudget: 48000 };
+export const defaultSettings = { provider: 'openai' as const, endpoint: 'https://api.openai.com/v1', model: '', language:'zh-Hans' as Language, fontSize: 15, annotations: true, theme: 'dark' as const, contextBudget: 48000 };
 export function newSession(title = 'New conversation'): Session { const now = Date.now(); return { id: uid(), title, createdAt: now, updatedAt: now, messages: [], branches: [], view: { mode: 'closed', branchId: null, drafts: {}, positions: {}, collapsed: [] } }; }
 export function emptyWorkspace(): Workspace { const session = newSession(); return { version: 1, sessions: [session], activeId: session.id, settings: migrateConnections({ ...defaultSettings }) }; }
 export function message(role: Message['role'], text: string, status: Message['status'] = 'complete'): Message { return { id: uid(), revision: uid(), role, text, status, createdAt: Date.now() }; }

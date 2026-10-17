@@ -24,12 +24,12 @@ ChatNote 是独立的跨平台对话式学习软件项目，目标平台为 **iP
 
 v0.3.0 扩大代码/公式/格式选区，补齐常见公式写法，新增私人批注笔记、发送前上下文确认和回答状态小字，并完善阅读位置与会话续期提示。
 
-Windows v0.13.0：启动后后台检查并下载签名更新；可立即重启更新或在下次启动自动安装。在设置 → 关于手动检查更新，查看进度与重试状态。联系开发者页面提供官网入口。原会话、锚点、草稿、附件、连接、凭据与ChatGPT注册保留。
+Windows v0.14.0：启动后后台检查并下载签名更新；可立即重启更新或在下次启动自动安装。在设置 → 关于手动检查更新，查看进度与重试状态。官网统一下载安装包；精简关于与起步界面，无回答时笔记只显示空态，新工作区默认简中。原会话、锚点、草稿、附件、连接、凭据与ChatGPT注册保留。
 
-- 本地安装包：`releases/ChatNote_0.13.0_x64-setup.exe`；直接启动：`releases/ChatNote_0.13.0.exe`。
-- [v0.13.0 使用与验证](docs/V0.13.0_VALIDATION.md)
-- [正式下载 v0.13.0](https://github.com/MKCorleonE/ChatNote/releases/tag/v0.13.0)
-- [回退版 v0.12.0](https://github.com/MKCorleonE/chatnote-site/releases/tag/v0.12.0)
+- 本地安装包：`releases/ChatNote_0.14.0_x64-setup.exe`。
+- [v0.14.0 使用与验证](docs/V0.14.0_VALIDATION.md)
+- [正式下载 v0.14.0](https://github.com/MKCorleonE/ChatNote/releases/tag/v0.14.0)
+- [回退版 v0.13.0](https://github.com/MKCorleonE/ChatNote/releases/tag/v0.13.0)
 - [版本保留规则](docs/RELEASE_POLICY.md) / [国际化维护](docs/INTERNATIONALIZATION.md)
 
 开发和浏览器预览不会安装更新。0.12.0及以前用户需手动安装本版一次，之后使用应用内更新。更新服务不接收聊天、笔记或模型凭据；模型API仍由用户自行配置。更新签名不等同于Windows发布者代码签名，完整测试与限制见本版验证记录。

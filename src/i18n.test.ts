@@ -43,6 +43,11 @@ test('Older workspaces migrate locale without changing profiles, drafts, message
   (w.settings as any).language='future-language';recoverWorkspace(w);expect(w.settings.language).toBe('en');
   (w.settings as any).language=42;expect(()=>validateWorkspace(w)).toThrow('Invalid settings');
 });
+
+test('Fresh workspaces start in Simplified Chinese while saved language choices survive recovery',()=>{
+  expect(emptyWorkspace().settings.language).toBe('zh-Hans');
+  for(const language of ['en','zh-Hans','zh-Hant'] as const){const w=emptyWorkspace();w.settings.language=language;const before=structuredClone(w);recoverWorkspace(w);expect(w.settings.language).toBe(language);expect(w.sessions).toEqual(before.sessions);expect(w.settings.profiles).toEqual(before.settings.profiles);}
+});
 test('Localized export changes headings while request context and original source stay identical', () => {
   const s=exampleSession(),original=structuredClone(s),branch=s.branches[0],input=contextFor(s,branch);
   const markdown=exportMarkdown(s,'zh-Hant');expect(markdown).toContain('> 來源: '+branch.anchor.quote);
