@@ -1,3 +1,15 @@
+# 当前交付 · 0.13.0
+
+- 安装包：ChatNote_0.13.0_x64-setup.exe
+- 直接程序：ChatNote_0.13.0.exe
+- 正式下载：<https://github.com/MKCorleonE/ChatNote/releases/tag/v0.13.0>
+- 关于页检查更新；已下载包可立即重启安装或下次启动自动安装。开发预览不执行安装。
+- 当前与上一稳定版保留0.13.0/0.12.0；更早原始程序逐项校验后归档，不删除。
+- 本地SHA256SUMS.txt是完整历史总表；公开Release校验表只包含该版实际公开文件。
+- 完整验证：[0.13.0](../docs/V0.13.0_VALIDATION.md)。
+
+下方是历史交付说明，其“私有”与版本状态由上方最新安排取代。
+
 # ChatNote 0.12.0 · Windows x64
 
 - ChatNote_0.12.0_x64-setup.exe：安装程序。

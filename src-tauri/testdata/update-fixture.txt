@@ -1,0 +1,1 @@
+ChatNote signed update verification fixture; this is not an installer.

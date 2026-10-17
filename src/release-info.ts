@@ -2,6 +2,12 @@ import manifest from '../package.json';
 
 export const appVersion = manifest.version;
 export const releaseEntries = [
+  {version:'0.13.0',date:'2026-10-17',title:'Signed updates & public development',changes:[
+    'Check and download updates in the background; restart when ready or install on the next launch.',
+    'Find manual update checks in About, with download progress and safe retries.',
+    'Save the workspace before updating, verify signed packages, and preserve conversations and connections.',
+    'Publish source under PolyForm Perimeter 1.0.1 and link the official website from developer contacts.',
+  ]},
   {version:'0.12.0',date:'2026-10-13',title:'Remembered context & personal space',changes:[
     'Send directly by default; optional context choices stay with each conversation and follow-up.',
     'Startup waits for your saved language before showing the motto.',
