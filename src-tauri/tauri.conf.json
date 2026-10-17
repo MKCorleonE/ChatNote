@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "ChatNote",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "identifier": "app.chatnote.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -19,7 +19,8 @@
         "height": 860,
         "minWidth": 390,
         "minHeight": 600,
-        "backgroundColor": "#17191c"
+        "backgroundColor": "#17191c",
+        "visible": false
       }
     ],
     "security": {
@@ -49,6 +50,26 @@
       },
       "webviewInstallMode": {
         "type": "downloadBootstrapper"
+      }
+    },
+    "createUpdaterArtifacts": true,
+    "licenseFile": "../LICENSE",
+    "resources": {
+      "../LICENSE": "LICENSE",
+      "../NOTICE": "NOTICE",
+      "../docs/THIRD_PARTY_SOURCE.md": "THIRD_PARTY_SOURCE.md"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDA4MjlDMkUxOEFCNjc5NzMKUldSemViYUs0Y0lwQ0xxSitVSEZkdWY0R1V1emxvcVBsRGZnVmhMcCtzRVZzTjZqVVQ5NldvdTYK",
+      "endpoints": [
+        "https://mkcorleone.github.io/chatnote-site/updates/stable.json",
+        "https://github.com/MKCorleonE/ChatNote/releases/latest/download/latest.json"
+      ],
+      "requireSignedVersion": true,
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

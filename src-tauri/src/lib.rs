@@ -5,6 +5,7 @@ mod network;
 mod profile_tests;
 mod recycle_bin;
 mod storage;
+mod updates;
 mod usage;
 mod vault;
 use std::{collections::HashMap, sync::Mutex};
@@ -29,6 +30,7 @@ pub fn run() {
         }
     }));
     builder
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
@@ -44,9 +46,15 @@ pub fn run() {
                 login: tokio::sync::Mutex::new(()),
                 login_cancel: Mutex::new(None),
             });
+            app.manage(updates::Updates::new(directory.join("updates")));
+            updates::startup(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            updates::update_status,
+            updates::check_update,
+            updates::download_update,
+            updates::install_update,
             storage::load_workspace,
             storage::save_workspace,
             recycle_bin::purge_conversations,

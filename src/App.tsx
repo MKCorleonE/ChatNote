@@ -3,6 +3,8 @@ import { trashConversation, restoreConversation, purgeTrash } from './trash';
 import { ContextDialog } from './ContextDialog';
 import { ConversationRuler } from './ConversationRuler';
 import { Toast } from './Toast';
+import { useAppUpdates } from './useAppUpdates';
+import { UpdateNotice } from './UpdateCard';
 import { ExportCelebration } from './ExportCelebration';
 import appIcon from '../app-icon.png';
 import { useTheme } from './useTheme';
@@ -287,6 +289,20 @@ export default function App() {
       positions
     });
   }, [viewPatch]);
+  const appUpdates=useAppUpdates(!!w,async()=>{
+    if(jobRef.current||purging.current||mediaBusy||voice||notebook||mindMap)throw new Error('update.wait');
+    const state=wRef.current;if(!state)throw new Error('update.saveFailed');
+    if(saveTimer.current)clearTimeout(saveTimer.current);
+    if(scrollTimer.current)clearTimeout(scrollTimer.current);
+    const next={...state,sessions:state.sessions.map(s=>{
+      if(s.id!==state.activeId)return s;
+      const positions={...s.view.positions},main=readPosition(mainRef.current),panel=readPosition(panelRef.current);
+      if(main)positions.main=main;
+      if(panel)positions[s.view.mode==='tree'?'tree':draftRef.current?'draft:'+noteDraftKey(draftRef.current.anchor):s.view.branchId??'new']=panel;
+      return {...s,view:{...s.view,positions}};
+    })};
+    wRef.current=next;setW(next);await bridge.saveWorkspace(next);
+  });
   const openBranch = useCallback((id: string, messageId?:string) => {
     const state = wRef.current,
       s = state?.sessions.find(s => s.id === state.activeId);
@@ -850,13 +866,13 @@ export default function App() {
       left: selection.x,
       top: selection.y
     }} onMouseDown={e => e.preventDefault()}><span>{selection.anchor.quote.slice(0, 25)}</span><button onClick={createAnnotation}><Plus size={14} />{t("Ask in annotation")}</button></div>}
-    {settingsPresence.rendered && <Settings trash={w.trash??[]} trashBusy={trashBusy||!!job} onRestore={id=>{if(jobRef.current||purging.current)return;remember();setW(prev=>prev?restoreConversation(prev,id):prev);setDraft(null);setSelection(null);setEditing(null);setContext(null);setPendingSend(null);setPromotion(null);notify(t('Conversation restored.'));}} onPurge={async ids=>{const before=wRef.current;if(!before||jobRef.current||purging.current)return;purging.current=true;setTrashBusy(true);if(saveTimer.current)clearTimeout(saveTimer.current);try{await bridge.purgeWorkspace(before,purgeTrash(before,ids),ids);wRef.current=purgeTrash(wRef.current??before,ids);setW(prev=>prev?purgeTrash(prev,ids):prev);notify(t('Recycle bin items permanently deleted.'));}catch(e){notify(String(e));}finally{purging.current=false;setTrashBusy(false);}}} voiceSetup={settingsVoice} closing={settingsPresence.leaving} onBackup={() => void backup()} onImport={() => importRef.current?.click()} dataBusy={!!job} value={w.settings} onLanguageChange={async chosen=>{remember();if(!wRef.current)return;const next={...wRef.current,settings:{...wRef.current.settings,language:chosen}};setW(next);setSelection(null);setNotice('');await bridge.saveWorkspace(next);}} onChange={async s => {
+    {settingsPresence.rendered && <Settings updates={appUpdates} updateBlocked={!!job||mediaBusy||!!voice||trashBusy} trash={w.trash??[]} trashBusy={trashBusy||!!job} onRestore={id=>{if(jobRef.current||purging.current)return;remember();setW(prev=>prev?restoreConversation(prev,id):prev);setDraft(null);setSelection(null);setEditing(null);setContext(null);setPendingSend(null);setPromotion(null);notify(t('Conversation restored.'));}} onPurge={async ids=>{const before=wRef.current;if(!before||jobRef.current||purging.current)return;purging.current=true;setTrashBusy(true);if(saveTimer.current)clearTimeout(saveTimer.current);try{await bridge.purgeWorkspace(before,purgeTrash(before,ids),ids);wRef.current=purgeTrash(wRef.current??before,ids);setW(prev=>prev?purgeTrash(prev,ids):prev);notify(t('Recycle bin items permanently deleted.'));}catch(e){notify(String(e));}finally{purging.current=false;setTrashBusy(false);}}} voiceSetup={settingsVoice} closing={settingsPresence.leaving} onBackup={() => void backup()} onImport={() => importRef.current?.click()} dataBusy={!!job} value={w.settings} onLanguageChange={async chosen=>{remember();if(!wRef.current)return;const next={...wRef.current,settings:{...wRef.current.settings,language:chosen}};setW(next);setSelection(null);setNotice('');await bridge.saveWorkspace(next);}} onChange={async s => {
       if (!wRef.current) return;
       const next = {
         ...wRef.current,
         settings: s
       };
-      setW(next);
+      wRef.current=next;setW(next);
       await bridge.saveWorkspace(next);
     }} onClose={() => {setSettings(false);setSettingsVoice(false);setCatalogEpoch(x=>x+1);}} onNotice={notify} />}
     {pendingDelete&&<DeleteDialog recoverable={!pendingDelete.messageId} title={t(pendingDelete.messageId?'Delete answer':'Delete conversation…')} description={pendingDelete.messageId?t('Delete this question and its answers? Retries in this turn and linked annotations or notes will also be deleted. Other turns and question versions stay.'):t('deleteConversationPrompt',{name:w.sessions.find(s=>s.id===pendingDelete.sessionId)?.title??''})} detail={pendingDelete.messageId&&affectedBranches(w.sessions.find(s=>s.id===pendingDelete.sessionId)!,pendingDelete.messageId).size?t('deleteLinkedAnnotations',{count:n(affectedBranches(w.sessions.find(s=>s.id===pendingDelete.sessionId)!,pendingDelete.messageId).size)}):undefined} onCancel={()=>setPendingDelete(null)} onDelete={confirmDeletion}/>}
@@ -887,6 +903,8 @@ export default function App() {
     {mindMap&&<MindMapDialog session={current} onClose={()=>setMindMap(false)} onNotice={notify} onExport={()=>setExportBurst(v=>v+1)}/>}
     {notebook&&<LearningNoteDialog session={current} settings={w.settings} onPreferences={learningPreferences=>setW(prev=>prev?{...prev,settings:{...prev.settings,learningPreferences}}:prev)} onExport={()=>setExportBurst(v=>v+1)} onClose={()=>setNotebook(false)} onNotice={notify}/>}
     {voice&&<SpeechRecorder profile={voice.profile} onResult={receiveVoice} onClose={()=>setVoice(null)}/>}
+    <UpdateNotice updates={appUpdates} blocked={!!job||mediaBusy||!!voice||trashBusy||settings}/>
+    {['saving','installing'].includes(appUpdates.status.phase)&&<div className="update-lock" role="dialog" aria-modal="true" aria-label={t('Software updates')}><span className="startup-pulse"/><p>{t(`update.${appUpdates.status.phase}`)}</p></div>}
     <Toast text={ui(notice)} version={noticeVersion} onClose={()=>setNotice('')}/><ExportCelebration burst={exportBurst}/>
     <input ref={importRef} type="file" accept=".json" hidden onChange={e => {
       const f = e.target.files?.[0];

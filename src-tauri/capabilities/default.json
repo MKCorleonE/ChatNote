@@ -1,1 +1,42 @@
-{ "$schema": "../gen/schemas/desktop-schema.json", "identifier": "default", "description": "Local ChatNote window", "windows": ["main"], "permissions": ["core:default", "core:window:allow-destroy", "core:window:allow-close", "core:window:allow-minimize", "core:window:allow-toggle-maximize", "core:window:allow-start-dragging", "dialog:allow-save", "fs:allow-write-text-file", "fs:allow-write-file", {"identifier":"opener:allow-open-url","allow":[{"url":"https://chatgpt.com/*"},{"url":"https://platform.openai.com/*"},{"url":"https://platform.deepseek.com/*"},{"url":"https://bailian.console.aliyun.com/*"}]}] }
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Local ChatNote window",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-destroy",
+    "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-start-dragging",
+    "dialog:allow-save",
+    "fs:allow-write-text-file",
+    "fs:allow-write-file",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://chatgpt.com/*"
+        },
+        {
+          "url": "https://platform.openai.com/*"
+        },
+        {
+          "url": "https://platform.deepseek.com/*"
+        },
+        {
+          "url": "https://bailian.console.aliyun.com/*"
+        },
+        {
+          "url": "https://mkcorleone.github.io/chatnote-site/*"
+        },
+        {
+          "url": "https://github.com/MKCorleonE/ChatNote*"
+        }
+      ]
+    }
+  ]
+}

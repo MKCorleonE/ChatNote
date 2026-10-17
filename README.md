@@ -1,8 +1,10 @@
 # ChatNote
 
-[官网与公开下载](https://mkcorleone.github.io/chatnote-site/) · [三语快速开始](https://mkcorleone.github.io/chatnote-site/guide.html)。官网源文件与公开安装包位于[独立公开仓库](https://github.com/MKCorleonE/chatnote-site)，应用源码继续私有。
+[官网与下载](https://mkcorleone.github.io/chatnote-site/) · [正式发行](https://github.com/MKCorleonE/ChatNote/releases) · [参与贡献](CONTRIBUTING.md)
 
-源码与版本历史保存在 [ChatNote 私有仓库](https://github.com/MKCorleonE/ChatNote)。开发与发布步骤见 [GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md)。
+源码与版本历史位于 [ChatNote](https://github.com/MKCorleonE/ChatNote)，采用 [PolyForm Perimeter 1.0.1](LICENSE)，限制将本软件用于向他人提供竞争产品。这是源码可见许可，并非 OSI 标准开源许可；第三方组件保留各自许可证。
+
+应用仓库承担源码、Issue/PR和新版本发行；[chatnote-site](https://github.com/MKCorleonE/chatnote-site)承担官网与静态更新入口。
 
 ChatNote 是独立的跨平台对话式学习软件项目，目标平台为 **iPadOS、macOS、iOS、Windows、Android**。
 
@@ -22,19 +24,15 @@ ChatNote 是独立的跨平台对话式学习软件项目，目标平台为 **iP
 
 v0.3.0 扩大代码/公式/格式选区，补齐常见公式写法，新增私人批注笔记、发送前上下文确认和回答状态小字，并完善阅读位置与会话续期提示。
 
-Windows v0.12.0：默认直接发送并记住主动选择的上下文范围，修复启动语言闪现；新增三语隐私政策、24小时完整对话回收站、实验室占位和一起改进ChatNote。沿用图片预览、导图调宽、短提示及彩带；原会话、锚点、草稿、附件、连接、凭据与ChatGPT注册保留。
+Windows v0.13.0：启动后后台检查并下载签名更新；可立即重启更新或在下次启动自动安装。在设置 → 关于手动检查更新，查看进度与重试状态。联系开发者页面提供官网入口。原会话、锚点、草稿、附件、连接、凭据与ChatGPT注册保留。
 
-- 本地安装包：`releases/ChatNote_0.12.0_x64-setup.exe`；直接启动：`releases/ChatNote_0.12.0.exe`。
-- [v0.12.0 使用与验证](docs/V0.12.0_VALIDATION.md)
-- [公开下载 v0.12.0](https://github.com/MKCorleonE/chatnote-site/releases/tag/v0.12.0)
-- [公开回退版 v0.11.0](https://github.com/MKCorleonE/chatnote-site/releases/tag/v0.11.0)
-- [版本保留规则](docs/RELEASE_POLICY.md)
-- [国际化维护说明](docs/INTERNATIONALIZATION.md)
-- [v0.1.0 基线验证](docs/BUILD_AND_VALIDATION.md)
+- 本地安装包：`releases/ChatNote_0.13.0_x64-setup.exe`；直接启动：`releases/ChatNote_0.13.0.exe`。
+- [v0.13.0 使用与验证](docs/V0.13.0_VALIDATION.md)
+- [正式下载 v0.13.0](https://github.com/MKCorleonE/ChatNote/releases/tag/v0.13.0)
+- [回退版 v0.12.0](https://github.com/MKCorleonE/chatnote-site/releases/tag/v0.12.0)
+- [版本保留规则](docs/RELEASE_POLICY.md) / [国际化维护](docs/INTERNATIONALIZATION.md)
 
-146项前端全量、28项常规原生检查通过；真实账号请求、麦克风、安装升级与手感仍待用户验收。DeepSeek 支持图片和 UTF-8 文本，PDF/Office 与语音转写暂不支持；上下文预算是本次请求文字的本地字符预算。
-
-升级时先关闭旧版及开发预览/启动服务，再启动新版或安装，无需退出账号。常用目录保留0.12.0与0.11.0，0.10.0及更早交付归档保留；原对话、锚点、草稿、附件、连接与凭据保留。公开下载不需要仓库权限；原私有Release继续保留。[官网行动清单与验证](docs/WEBSITE_LAUNCH_VALIDATION.md)。
+开发和浏览器预览不会安装更新。0.12.0及以前用户需手动安装本版一次，之后使用应用内更新。更新服务不接收聊天、笔记或模型凭据；模型API仍由用户自行配置。更新签名不等同于Windows发布者代码签名，完整测试与限制见本版验证记录。
 
 圆角图标与跟随系统主题预览已纳入 0.8.0；预览过程保留。[本轮说明](docs/PREVIEW_ROUNDED_ICON_SYSTEM_THEME.md)。
 
