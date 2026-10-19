@@ -2,6 +2,7 @@ import manifest from '../package.json';
 
 export const appVersion = manifest.version;
 export const releaseEntries = [
+  {version:'0.15.0-preview.1',date:'2026-10-19',title:'Learning results that stay with you',changes:['Organization drafts save automatically with their conversation.','Search answers and notes and jump to their exact source.','Conversation storage writes changed records and deduplicates context.','Choose private notes, history and files before exporting.']},
   {version:'0.14.0',date:'2026-10-17',title:"A quieter start & focused notebooks",changes:["Start in Simplified Chinese on a fresh workspace; preserve saved language choices.","Show a quiet empty notebook until the conversation has answers; never organize empty material.","Simplify About and the new conversation screen, and hide the browser context menu.","Offer installers only on the official download page."]},
   {version:'0.13.0',date:'2026-10-17',title:'Signed updates & public development',changes:[
     'Check and download updates in the background; restart when ready or install on the next launch.',

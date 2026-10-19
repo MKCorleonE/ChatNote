@@ -1,3 +1,7 @@
+import { MarkdownExportDialog } from './MarkdownExportDialog';
+import { keepLearningDraft } from './learning-drafts';
+import { searchWorkspace, revealSearchHit, type SearchHit } from './search';
+import { SearchResults } from './SearchResults';
 import { applyContextSelection, savedContextSelection } from './context-preferences';
 import { trashConversation, restoreConversation, purgeTrash } from './trash';
 import { ContextDialog } from './ContextDialog';
@@ -8,10 +12,10 @@ import { UpdateNotice } from './UpdateCard';
 import { ExportCelebration } from './ExportCelebration';
 import appIcon from '../app-icon.png';
 import { useTheme } from './useTheme';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
+import { useCallback, useDeferredValue, useMemo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { ArrowDownToLine, ArrowLeft, ArrowUp, BookOpen, Check, ChevronDown, Copy, FilePlus2, TreeDeciduous, Menu, MessageSquare, MoreHorizontal, Mic, Maximize2, NotebookText, Network, Pin, PinOff, Plus, Search, Settings as SettingsIcon, Square, Trash2, X } from 'lucide-react';
 import * as bridge from './bridge';
-import { ancestry, contextFor, emptyWorkspace, exampleSession, exportMarkdown, makeAnchor, message, recoverWorkspace, selectContext, snapshot, uid, validAnchor, validateWorkspace } from './core';
+import { ancestry, contextFor, emptyWorkspace, exampleSession, makeAnchor, message, recoverWorkspace, selectContext, snapshot, uid, validAnchor, validateWorkspace } from './core';
 import type { Anchor, Branch, ContextReport, Message, Session, View, Workspace } from './types';
 import { RichText } from './RichText';
 import Settings from './Settings';
@@ -96,7 +100,7 @@ export default function App() {
   const { t, n, date, ui, plural } = translator(language);
   const messageNow = useMessageClock();
   useEffect(() => { document.documentElement.lang = language; }, [language]);
-  const [welcome,setWelcome]=useState(false),[updatedWelcome,setUpdatedWelcome]=useState(false),[treeOverview,setTreeOverview]=useState(false),[notebook,setNotebook]=useState(false),[mediaBusy,setMediaBusy]=useState(false),[mindMap,setMindMap]=useState(false),[starting,setStarting]=useState(true);
+  const [welcome,setWelcome]=useState(false),[updatedWelcome,setUpdatedWelcome]=useState(false),[treeOverview,setTreeOverview]=useState(false),[notebook,setNotebook]=useState(false),[mediaBusy,setMediaBusy]=useState(false),[mindMap,setMindMap]=useState(false),[markdownExport,setMarkdownExport]=useState(false),[starting,setStarting]=useState(true);
   useEffect(()=>{if(!w)return;const timer=setTimeout(()=>setStarting(false),1500);return()=>clearTimeout(timer);},[!!w]);
   const startupPresence=usePresence(starting,300);
   const [voice,setVoice]=useState<{sessionId:string;key:string;where:'main'|'branch';profile:ConnectionProfile}|null>(null);
@@ -105,6 +109,9 @@ export default function App() {
     [settings, setSettings] = useState(false),
     [more, setMore] = useState(false),
     [search, setSearch] = useState('');
+  const [searchTarget,setSearchTarget]=useState<SearchHit|null>(null);
+  const deferredSearch=useDeferredValue(search);
+  const found=useMemo(()=>searchWorkspace(w?.sessions??[],deferredSearch),[w?.sessions,deferredSearch]);
   const dockedHistory=!!w?.settings.historyPinned&&viewport>=1060;
   const panelViewport=viewport-(dockedHistory?244:0);
   const historyVisible=history||dockedHistory;
@@ -237,6 +244,7 @@ export default function App() {
         if(purging.current){notify('Saving…');return;}
         try {
           jobRef.current?.controller.abort();
+          window.dispatchEvent(new Event('chatnote-flush-learning'));
           if (wRef.current) await bridge.saveWorkspace(wRef.current);
           await win.destroy();
         } catch (e) {
@@ -749,6 +757,12 @@ export default function App() {
   if(mode!=='closed')lastPanel.current.mode=mode;
   const panelMode=mode==='closed'?lastPanel.current.mode:mode;
   const draftKey = draft ? 'new' : branch?.id ?? 'new';
+  function openSearchResult(hit:SearchHit){
+    if(jobRef.current){notify(t('Stop generation before navigating to a search result.'));return;}
+    remember();setDraft(null);setEditing(null);setSelection(null);setHistory(false);restored.current='';
+    setW(prev=>prev?{...prev,activeId:hit.sessionId,sessions:prev.sessions.map(s=>s.id===hit.sessionId?revealSearchHit(s,hit):s)}:prev);setSearchTarget(hit);if(hit.kind==='organized')setNotebook(true);
+  }
+  useEffect(()=>{if(!searchTarget||!current||searchTarget.sessionId!==current.id)return;let second=0;const frame=requestAnimationFrame(()=>{second=requestAnimationFrame(()=>{const el=searchTarget.branchId?panelRef.current:mainRef.current;const node=searchTarget.kind==='note'?el?.querySelector<HTMLElement>('.private-note'):Array.from(el?.querySelectorAll<HTMLElement>('[data-message-id]')??[]).find(n=>n.dataset.messageId===searchTarget.messageId);if(node){node.scrollIntoView({block:'center',behavior:'auto'});node.classList.add('search-located');node.setAttribute('tabindex','-1');node.focus({preventScroll:true});}});});return()=>{cancelAnimationFrame(frame);cancelAnimationFrame(second);};},[searchTarget,current?.id,current?.view.branchId]);
   function confirmDeletion(){
     const state=wRef.current,target=pendingDelete;if(!state||!target)return;
     if(jobRef.current){notify('Stop generation before deleting.');return;}
@@ -829,11 +843,7 @@ export default function App() {
     <nav className="rail" aria-label={t('Navigation')}><div className="rail-capsule"><button className="rail-button rail-new" onClick={() => addSession()} title={t('New conversation')} aria-label={t('New conversation')}><Plus size={20}/></button><button className={`rail-button ${historyVisible ? 'active' : ''}`} aria-expanded={historyVisible} aria-controls="conversation-history" onClick={() => { if(historyVisible)closeHistory();else setHistory(true); setSettings(false); setSettingsVoice(false); setMore(false); }} title={t('Conversations')} aria-label={t('Open conversations')}><Menu size={19}/></button><button data-guide="connections" className={`rail-button rail-settings ${settings ? 'active' : ''}`} aria-expanded={settings} onClick={() => { setSettingsVoice(false); setSettings(x => !x); setHistory(false); setMore(false); }} title={t('Settings')} aria-label={t('Open settings')}><SettingsIcon size={19}/></button></div></nav>
     <div className="workspace"><header className="topbar" data-tauri-drag-region><div className="title-group" data-tauri-drag-region><span className="wordmark" data-tauri-drag-region>ChatNote</span><span className="title-divider" data-tauri-drag-region /><button className="session-title" title={t("Rename conversation")} onClick={() => setRenaming({sessionId:current.id,title:current.title})}>{current.title}<ChevronDown size={12} /></button></div><div className="top-actions">{w.settings.annotations && <button data-guide="tree" className={`toolbar-button ${mode === 'tree' ? 'active' : ''}`} onClick={showTree} aria-label={t("Follow-up tree")} title={t("Follow-up tree")}><TreeDeciduous size={16} /><span>{t("Follow-up tree")}</span>{current.branches.length > 0 && <small>{n(current.branches.length)}</small>}</button>}<button data-guide="notebook" className="icon-button" disabled={!!job||mediaBusy} title={t('Learning notebook')} aria-label={t('Learning notebook')} onClick={()=>setNotebook(true)}><BookOpen size={19}/></button><button data-guide="mind-map" className="icon-button" disabled={!!job||mediaBusy} title={t('Mind map')} aria-label={t('Mind map')} onClick={()=>setMindMap(true)}><Network size={19}/></button><button data-more-trigger className="icon-button" aria-expanded={more} onClick={() => setMore(x => !x)} aria-label={t("More actions")}><MoreHorizontal size={19} /></button><WindowControls/></div>{morePresence.rendered && <div inert={morePresence.leaving} aria-hidden={morePresence.leaving} className={`action-menu ${morePresence.leaving?'leaving':''}`}><button onClick={()=>{setMore(false);setUpdatedWelcome(false);setWelcome(true);}}><BookOpen size={15}/>{t('Show introduction')}</button><button onClick={async () => {
             setMore(false);
-            try {
-              await bridge.saveFile(`${safeName(current.title)}.md`, exportMarkdown(current, language));
-            } catch (e) {
-              notify(String(e));
-            }
+            setMarkdownExport(true);
           }}><ArrowDownToLine size={15} />{t("Export this conversation")}</button><button onClick={() => {
             setMore(false);
             void backup();
@@ -862,7 +872,7 @@ export default function App() {
                   });
                 }}>{t("Bring a conclusion to the main thread")}<ArrowUp size={13} /></button>}</>}{draft && <div className="annotation-empty"><span className="small-label">{t("STAY WITH THE DETAIL")}</span><p>{t("Your question lives beside this passage. The main conversation keeps its flow.")}</p><div className="suggestions">{['Why is it designed this way?', 'Can you give me an example?'].map(q => <button key={q} onClick={() => setDraftText('new', t(q))}>{t(q)}</button>)}</div></div>}</>}</div>{panelMode === 'branch' && (draft || branch) && <div className="panel-compose">{composer('branch')}<span className="small muted ai-notice">{t("AI can make mistakes. Please check important information.")}</span></div>}</aside>}
     </div></div>
-    {historyPresence.rendered && <>{!dockedHistory&&<div className={`drawer-scrim ${historyPresence.leaving?'leaving':''}`} onClick={()=>setHistory(false)}/>}<section inert={historyPresence.leaving} id="conversation-history" className={`history-drawer ${dockedHistory?'pinned':''} ${historyPresence.leaving?'leaving':''}`} onKeyDown={e=>{if(e.key==='Escape'&&!dockedHistory)setHistory(false);}} aria-label={t('Conversations')}><header><h2>{t('Your conversations')}</h2><div className="history-header-actions"><button className={`icon-button ${w.settings.historyPinned?'active':''}`} aria-label={t(w.settings.historyPinned?'Unpin conversations':'Pin conversations')} aria-pressed={!!w.settings.historyPinned} title={t(w.settings.historyPinned?'Unpin conversations':'Pin conversations')} onClick={toggleHistoryPin}>{w.settings.historyPinned?<PinOff size={16}/>:<Pin size={16}/>}</button><button className="icon-button" onClick={closeHistory} aria-label={t('Close conversations')}><X size={17}/></button></div></header><button className="new-session" onClick={()=>addSession()}><Plus size={16}/>{t('New conversation')}</button><div className="history-search"><Search size={15}/><input aria-label={t('Search conversations')} placeholder={t('Find a conversation…')} value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="session-list">{w.sessions.filter(s=>hasConversation(s)&&s.title.toLowerCase().includes(search.toLowerCase())).map(s=><div className={`session-row ${s.id===current.id?'active':''}`} key={s.id}><button className="session-open" onClick={()=>switchSession(s.id)}><MessageSquare size={15}/><span>{s.title}<small>{plural('annotationCount',s.branches.length)} · {date(s.updatedAt)}</small></span></button><button className="icon-button session-delete" disabled={!!job} aria-label={t('deleteConversationNamed',{name:s.title})} title={t('Delete conversation…')} onClick={()=>setPendingDelete({sessionId:s.id})}><Trash2 size={14}/></button></div>)}</div><footer><span className="status-dot"/>{t('Saved on this device')}</footer></section></>}
+    {historyPresence.rendered && <>{!dockedHistory&&<div className={`drawer-scrim ${historyPresence.leaving?'leaving':''}`} onClick={()=>setHistory(false)}/>}<section inert={historyPresence.leaving} id="conversation-history" className={`history-drawer ${dockedHistory?'pinned':''} ${historyPresence.leaving?'leaving':''}`} onKeyDown={e=>{if(e.key==='Escape'&&!dockedHistory)setHistory(false);}} aria-label={t('Conversations')}><header><h2>{t('Your conversations')}</h2><div className="history-header-actions"><button className={`icon-button ${w.settings.historyPinned?'active':''}`} aria-label={t(w.settings.historyPinned?'Unpin conversations':'Pin conversations')} aria-pressed={!!w.settings.historyPinned} title={t(w.settings.historyPinned?'Unpin conversations':'Pin conversations')} onClick={toggleHistoryPin}>{w.settings.historyPinned?<PinOff size={16}/>:<Pin size={16}/>}</button><button className="icon-button" onClick={closeHistory} aria-label={t('Close conversations')}><X size={17}/></button></div></header><button className="new-session" onClick={()=>addSession()}><Plus size={16}/>{t('New conversation')}</button><div className="history-search"><Search size={15}/><input aria-label={t('Search conversations')} placeholder={t('Search conversations, answers and notes…')} value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="session-list">{deferredSearch.trim()?<SearchResults result={found} sessions={w.sessions} onOpen={openSearchResult}/>:w.sessions.filter(s=>hasConversation(s)&&s.title.toLowerCase().includes(search.toLowerCase())).map(s=><div className={`session-row ${s.id===current.id?'active':''}`} key={s.id}><button className="session-open" onClick={()=>switchSession(s.id)}><MessageSquare size={15}/><span>{s.title}<small>{plural('annotationCount',s.branches.length)} · {date(s.updatedAt)}</small></span></button><button className="icon-button session-delete" disabled={!!job} aria-label={t('deleteConversationNamed',{name:s.title})} title={t('Delete conversation…')} onClick={()=>setPendingDelete({sessionId:s.id})}><Trash2 size={14}/></button></div>)}</div><footer><span className="status-dot"/>{t('Saved on this device')}</footer></section></>}
     {selection && <div className="selection-toolbar" style={{
       left: selection.x,
       top: selection.y
@@ -902,7 +912,8 @@ export default function App() {
     {treeOverview&&<TreeOverview session={current} layout={w.settings.treeLayout??'trail'} onLayout={treeLayout=>setW(prev=>prev?{...prev,settings:{...prev.settings,treeLayout}}:prev)} onOpen={(id,messageId)=>{setTreeOverview(false);openBranch(id,messageId);}} onCollapsed={collapsed=>viewPatch(current.id,{collapsed})} onClose={()=>setTreeOverview(false)}/>}
     {startupPresence.rendered&&<div inert={startupPresence.leaving} className={`startup-overlay boot ${startupPresence.leaving?'leaving':''}`} aria-label={t('Opening your workspace…')}><div className="brand-symbol"><img src={appIcon} alt=""/></div><h1>ChatNote</h1><p className="boot-motto">{t('Explore every question without losing the thread.')}</p><span className="startup-pulse"/></div>}
     {mindMap&&<MindMapDialog session={current} onClose={()=>setMindMap(false)} onNotice={notify} onExport={()=>setExportBurst(v=>v+1)}/>}
-    {notebook&&<LearningNoteDialog session={current} settings={w.settings} onPreferences={learningPreferences=>setW(prev=>prev?{...prev,settings:{...prev.settings,learningPreferences}}:prev)} onExport={()=>setExportBurst(v=>v+1)} onClose={()=>setNotebook(false)} onNotice={notify}/>}
+    {markdownExport&&<MarkdownExportDialog session={current} fileName={safeName(current.title)} onClose={()=>setMarkdownExport(false)} onNotice={notify} onExport={()=>setExportBurst(v=>v+1)}/>}
+    {notebook&&<LearningNoteDialog key={current.id} onDraft={draft=>{const state=wRef.current;if(!state)return;const next={...state,sessions:state.sessions.map(s=>s.id===current.id?keepLearningDraft(s,draft):s)};wRef.current=next;setW(next);}} session={current} settings={w.settings} onPreferences={learningPreferences=>setW(prev=>prev?{...prev,settings:{...prev.settings,learningPreferences}}:prev)} onExport={()=>setExportBurst(v=>v+1)} onClose={()=>setNotebook(false)} onNotice={notify}/>}
     {voice&&<SpeechRecorder profile={voice.profile} onResult={receiveVoice} onClose={()=>setVoice(null)}/>}
     <UpdateNotice updates={appUpdates} blocked={!!job||mediaBusy||!!voice||trashBusy||settings}/>
     {['saving','installing'].includes(appUpdates.status.phase)&&<div className="update-lock" role="dialog" aria-modal="true" aria-label={t('Software updates')}><span className="startup-pulse"/><p>{t(`update.${appUpdates.status.phase}`)}</p></div>}

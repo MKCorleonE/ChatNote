@@ -83,6 +83,8 @@ export function validateWorkspace(data: unknown): asserts data is Workspace {
   for (const s of [...w.sessions,...(w.trash??[]).map(e=>e.session)]) {
     if (!s || typeof s.id !== 'string' || all.has(s.id) || typeof s.title !== 'string' || !Array.isArray(s.messages) || !Array.isArray(s.branches)) throw new Error('Invalid or duplicate conversation.'); all.add(s.id);
     const owners = new Map<string, string>(), records = new Map<string, string>();
+    const checkDraft=(d:import('./types').LearningDraft)=>{if(!d||typeof d.id!=='string'||typeof d.text!=='string'||d.text.length>2_000_000||typeof d.sourceVersion!=='string'||!Number.isFinite(d.updatedAt)||typeof d.partial!=='boolean')throw new Error('Invalid learning draft.');};
+    if(s.learningDraft!==undefined)checkDraft(s.learningDraft);if(s.learningHistory!==undefined){if(!Array.isArray(s.learningHistory))throw new Error('Invalid learning draft.');s.learningHistory.forEach(checkDraft);}
     for (const thread of [s, ...s.branches]) {
       if (!thread || !Array.isArray(thread.messages) || (thread.messageHistory !== undefined && (!Array.isArray(thread.messageHistory) || thread.messageHistory.length > 1000 || thread.messageHistory.some(path => !Array.isArray(path))))) throw new Error('Invalid saved question versions.');
       if (thread.activeMessageIds !== undefined && (!Array.isArray(thread.activeMessageIds) || new Set(thread.activeMessageIds).size !== thread.activeMessageIds.length || thread.activeMessageIds.some(id=>typeof id!=='string'||!thread.messages.some(m=>m.id===id)))) throw new Error('Invalid saved question versions.');
@@ -124,6 +126,7 @@ export function exportMarkdown(s: Session, language:Language='en'): string {
   function writeMain(path: Message[]) { for (const m of path) { lines.push(`## ${t(m.role === 'user' ? 'You' : 'Assistant')}${m.status !== 'complete' ? ` · ${t('status.'+m.status)}` : ''}`, '', m.text, ''); s.branches.filter(b => !b.parentId && b.anchor.messageId === m.id && !writtenBranches.has(b.id)).forEach(b => branch(b, 1)); } }
   writeMain(activeMessages(s));
   if (s.messageHistory?.length) { lines.push(`# ${t('Saved question versions')}`, ''); s.messageHistory.forEach((path, i) => { lines.push(`## ${i + 1}`, ''); writeMain(path); }); }
+  if(s.learningDraft?.text)lines.push(`## ${t('Organized draft')}`,'',s.learningDraft.text);
   return lines.join('\n');
 }
 export function exampleSession(): Session {

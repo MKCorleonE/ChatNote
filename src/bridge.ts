@@ -1,3 +1,4 @@
+import { storageSnapshot, storageWorkspace, unpackWorkspace } from './workspace-storage';
 import { Channel, invoke, isTauri } from '@tauri-apps/api/core';
 import type { Connection, ConnectionProfile, Generation, Model, ProfileStatus, StreamEvent, UsageInfo, Workspace } from './types';
 import { recoverWorkspace, validateWorkspace } from './core';
@@ -10,29 +11,37 @@ import { expiredTrash, purgeTrash } from './trash';
 export const desktop = isTauri();
 const browserKey = 'chatnote-workspace-v1';
 let queue: Promise<void> = Promise.resolve();
+const sessionCache=new WeakMap<import('./types').Session,string>();
+let storedRecords=new Map<string,string>();
 const transientKeys: Record<string, string> = {};
 export async function loadWorkspace(): Promise<Workspace | null> {
   let raw: string | null;
   if (desktop) raw = await invoke<string | null>('load_workspace');
   else raw = await new Promise<string | null>((resolve, reject) => { const r = indexedDB.open('chatnote', 2); r.onupgradeneeded = () => {if(!r.result.objectStoreNames.contains('workspace'))r.result.createObjectStore('workspace');if(!r.result.objectStoreNames.contains('attachments'))r.result.createObjectStore('attachments');}; r.onerror = () => reject(new Error('Cannot open browser storage.')); r.onsuccess = () => { const db = r.result; const q = db.transaction('workspace').objectStore('workspace').get(browserKey); q.onsuccess = () => { resolve(q.result ?? null); db.close(); }; q.onerror = () => { reject(new Error('Cannot read browser storage.')); db.close(); }; }; });
+  storedRecords=new Map();
   if (!raw) return null;
-  const data = JSON.parse(raw); validateWorkspace(data); const info=desktop?await connection().catch(()=>null):null;data.settings=migrateConnections(data.settings,info?.legacyCompatibleEndpoint);recoverWorkspace(data);
+  const data = unpackWorkspace(JSON.parse(raw)); validateWorkspace(data); const info=desktop?await connection().catch(()=>null):null;data.settings=migrateConnections(data.settings,info?.legacyCompatibleEndpoint);recoverWorkspace(data);
   const expired=expiredTrash(data);if(!expired.length)return data;const next=purgeTrash(data,expired);await purgeWorkspace(data,next,expired);return next;
 }
 export function saveWorkspace(w: Workspace): Promise<void> {
-  const raw = JSON.stringify(w);
-  queue = queue.catch(() => {}).then(()=>persistWorkspace(raw));return queue;
+  const snapshot=storageSnapshot(w,sessionCache);
+  const raw=desktop?null:storageWorkspace(w);
+  queue = queue.catch(() => {}).then(async()=>{
+    if(!desktop)return persistWorkspace(raw!);
+    const changes=[...snapshot.records].filter(([id,payload])=>storedRecords.get(id)!==payload).map(([id,payload])=>({id,payload}));
+    await invoke('save_workspace_delta',{head:snapshot.head,changes});storedRecords=snapshot.records;
+  });return queue;
 }
 async function persistWorkspace(raw:string):Promise<void> {
     if (desktop) return invoke<void>('save_workspace', { payload: raw });
     return new Promise<void>((resolve, reject) => { const r = indexedDB.open('chatnote', 2); r.onupgradeneeded = () => {if(!r.result.objectStoreNames.contains('workspace'))r.result.createObjectStore('workspace');if(!r.result.objectStoreNames.contains('attachments'))r.result.createObjectStore('attachments');}; r.onerror = () => reject(new Error('Cannot save in this browser. Export a backup.')); r.onsuccess = () => { const db = r.result, tx = db.transaction('workspace', 'readwrite'); tx.objectStore('workspace').put(raw, browserKey); tx.oncomplete = () => { resolve(); db.close(); }; tx.onerror = () => { reject(new Error('Saving failed. Export a backup.')); db.close(); }; }; });
 }
 export function purgeWorkspace(before:Workspace,next:Workspace,sessionIds:string[]):Promise<void> {
-  validateWorkspace(next);const raw=JSON.stringify(next);
+  validateWorkspace(next);const raw=storageWorkspace(next);
   queue=queue.catch(()=>{}).then(async()=>{
     // Flush the pre-deletion state before the atomic purge, including recently moved items.
-    await persistWorkspace(JSON.stringify(before));
-    if(desktop){await invoke('purge_conversations',{payload:raw,sessionIds});return;}
+    if(desktop){const snapshot=storageSnapshot(before);await invoke('save_workspace_delta',{head:snapshot.head,changes:[...snapshot.records].map(([id,payload])=>({id,payload}))});}else await persistWorkspace(storageWorkspace(before));
+    if(desktop){await invoke('purge_conversations',{payload:raw,sessionIds});storedRecords=new Map();return;}
     const candidates=referencedAttachments({...before,sessions:(before.trash??[]).filter(e=>sessionIds.includes(e.session.id)).map(e=>e.session),trash:[]}),retained=new Set(referencedAttachments(next).map(a=>a.id));
     await new Promise<void>((resolve,reject)=>{const request=indexedDB.open('chatnote',2);request.onerror=()=>reject(new Error('Could not open the recycle bin'));request.onsuccess=()=>{const db=request.result,tx=db.transaction(['workspace','attachments'],'readwrite');tx.objectStore('workspace').put(raw,browserKey);for(const a of candidates)if(!retained.has(a.id))tx.objectStore('attachments').delete(a.id);tx.oncomplete=()=>{db.close();resolve();};tx.onabort=tx.onerror=()=>{db.close();reject(new Error('Recycle bin cleanup failed. Your saved records were preserved.'));};};});
   });return queue;
