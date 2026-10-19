@@ -1,6 +1,6 @@
 # Windows安装后会生成什么
 
-适用0.14.0，2026-10-17。根据本版实际NSIS安装脚本核对，并与0.13.0隔离安装目录的五项文件对应。安装目录默认是`%LOCALAPPDATA%\ChatNote`，选择自定义位置或已有安装记录时会沿用相应目录。
+适用0.15.0，2026-10-19。根据本版实际NSIS安装脚本核对，并与0.13.0隔离安装目录的五项文件对应。安装目录默认是`%LOCALAPPDATA%\ChatNote`，选择自定义位置或已有安装记录时会沿用相应目录。
 
 | 安装目录内的文件 | 用途 |
 | --- | --- |
@@ -15,6 +15,7 @@
 ## 首次运行与后续使用
 
 - `%APPDATA%\app.chatnote.desktop\chatnote.sqlite`：本地对话、批注、笔记、草稿、设置和附件；附件保存在数据库，不单独散落为文件。
+- 首次转为0.15.0存储格式前，同目录生成`chatnote.pre-v015.sqlite`升级前独立备份，包含当时的聊天、附件等工作区数据，不包含系统凭据库；回收站清理不会改写该独立备份。
 - 同目录可能出现`chatnote.sqlite-wal`和`chatnote.sqlite-shm`：SQLite运行时日志与共享内存文件，不能在应用运行时随意删除。
 - 同目录的`updates\`：下载更新时临时保存`package.part`/`pending.part`，完整验签后为`package.bin`/`pending.json`；安装尝试时会产生`install-attempted`。完成升级后清除这些固定更新文件。
 - `%LOCALAPPDATA%\app.chatnote.desktop\`：WebView2浏览器组件的运行缓存等数据。它与对话数据库用途不同，不代表把聊天上传到了浏览器服务。
