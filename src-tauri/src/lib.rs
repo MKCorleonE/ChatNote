@@ -4,6 +4,7 @@ mod network;
 #[cfg(test)]
 mod profile_tests;
 mod recycle_bin;
+mod segmented_storage;
 mod storage;
 mod updates;
 mod usage;
@@ -57,6 +58,7 @@ pub fn run() {
             updates::install_update,
             storage::load_workspace,
             storage::save_workspace,
+            segmented_storage::save_workspace_delta,
             recycle_bin::purge_conversations,
             auth::connection_status,
             auth::set_api_key,

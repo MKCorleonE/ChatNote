@@ -5,7 +5,8 @@ export interface Message { id: string; revision: string; role: 'user' | 'assista
 export interface Anchor { messageId: string; revision: string; start: number; end: number; quote: string; prefix: string; suffix: string }
 export interface Branch { id: string; parentId: string | null; anchor: Anchor; messages: Message[]; activeMessageIds?:string[]; messageHistory?: Message[][]; createdAt: number; sourceContext: ContextItem[]; note?:string }
 export interface View { mode: 'closed' | 'branch' | 'tree'; branchId: string | null; drafts: Record<string, string>; positions: Record<string, { messageId: string; offset: number; scrollTop: number }>; collapsed: string[]; attachmentDrafts?:Record<string,Attachment[]>; contextSelections?:Record<string,string[]>; draftSource?:{anchor:Anchor;parentId:string|null} }
-export interface Session { id: string; title: string; createdAt: number; updatedAt: number; messages: Message[]; activeMessageIds?:string[]; messageHistory?: Message[][]; branches: Branch[]; view: View; example?: boolean }
+export interface LearningDraft { id:string; text:string; updatedAt:number; sourceVersion:string; partial:boolean; model?:string; requestId?:string }
+export interface Session { id: string; title: string; createdAt: number; updatedAt: number; messages: Message[]; activeMessageIds?:string[]; messageHistory?: Message[][]; branches: Branch[]; view: View; example?: boolean; learningDraft?:LearningDraft; learningHistory?:LearningDraft[] }
 export type ProviderKind = 'openai' | 'chatgpt' | 'compatible';
 export type Preset = 'openai' | 'chatgpt' | 'deepseek' | 'qwen' | 'custom';
 export type ReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'ultra';

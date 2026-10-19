@@ -6,10 +6,10 @@ pub fn open_database(path: &Path) -> Result<Connection, Box<dyn std::error::Erro
     let db = Connection::open(path)?;
     db.busy_timeout(std::time::Duration::from_secs(5))?;
     let version: i64 = db.pragma_query_value(None, "user_version", |row| row.get(0))?;
-    if version > 1 {
+    if version > 2 {
         return Err("This database needs a newer ChatNote version.".into());
     }
-    db.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; CREATE TABLE IF NOT EXISTS workspace (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL, updated_at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS recovery (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL); CREATE TABLE IF NOT EXISTS runtime_settings (name TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS attachments (id TEXT PRIMARY KEY, metadata TEXT NOT NULL, data TEXT NOT NULL); PRAGMA user_version=1;")?;
+    db.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; CREATE TABLE IF NOT EXISTS workspace (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL, updated_at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS recovery (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL); CREATE TABLE IF NOT EXISTS runtime_settings (name TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS attachments (id TEXT PRIMARY KEY, metadata TEXT NOT NULL, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS workspace_head(id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL); CREATE TABLE IF NOT EXISTS session_records(id TEXT PRIMARY KEY,payload TEXT NOT NULL); CREATE TABLE IF NOT EXISTS session_recovery(id INTEGER PRIMARY KEY AUTOINCREMENT,session_id TEXT NOT NULL,payload TEXT NOT NULL);")?;
     Ok(db)
 }
 pub fn write_workspace(db: &mut Connection, payload: &str) -> Result<(), String> {
@@ -40,13 +40,8 @@ pub fn write_workspace(db: &mut Connection, payload: &str) -> Result<(), String>
 }
 #[tauri::command]
 pub fn load_workspace(state: tauri::State<Runtime>) -> Result<Option<String>, String> {
-    state
-        .db
-        .lock()
-        .map_err(|_| "Database lock failed")?
-        .query_row("SELECT payload FROM workspace WHERE id=1", [], |r| r.get(0))
-        .optional()
-        .map_err(|e| e.to_string())
+    let db = state.db.lock().map_err(|_| "Database lock failed")?;
+    crate::segmented_storage::read(&db)
 }
 #[tauri::command]
 pub fn save_workspace(state: tauri::State<Runtime>, payload: String) -> Result<(), String> {
@@ -107,7 +102,7 @@ mod tests {
             std::env::temp_dir().join(format!("chatnote-newer-{}.sqlite", uuid::Uuid::new_v4()));
         {
             let db = Connection::open(&path).unwrap();
-            db.pragma_update(None, "user_version", 2).unwrap();
+            db.pragma_update(None, "user_version", 3).unwrap();
         }
         assert!(open_database(&path).is_err());
         std::fs::remove_file(path).unwrap();

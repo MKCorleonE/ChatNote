@@ -54,7 +54,7 @@ fn strip(value: &mut Value, ids: &HashSet<String>, removed: &mut HashSet<String>
     }
 }
 pub fn purge(db: &mut Connection, payload: &str, session_ids: &[String]) -> Result<(), String> {
-    if payload.len() > 20_000_000 || session_ids.is_empty() || session_ids.len() > 2000 {
+    if payload.len() > 300_000_000 || session_ids.is_empty() || session_ids.len() > 2000 {
         return Err("Invalid recycle bin deletion".into());
     }
     let next: Value = serde_json::from_str(payload).map_err(|_| "Invalid workspace JSON")?;
@@ -74,14 +74,21 @@ pub fn purge(db: &mut Connection, payload: &str, session_ids: &[String]) -> Resu
         return Err("Deleted conversations must not remain in the workspace".into());
     }
     let tx = db.transaction().map_err(|e| e.to_string())?;
-    let current: Option<String> = tx
-        .query_row("SELECT payload FROM workspace WHERE id=1", [], |r| r.get(0))
-        .optional()
-        .map_err(|e| e.to_string())?;
+    let current = crate::segmented_storage::read(&tx)?;
     let mut removed = HashSet::new();
     if let Some(raw) = current {
         let mut old: Value = serde_json::from_str(&raw).map_err(|_| "Invalid saved workspace")?;
         strip(&mut old, &ids, &mut removed);
+    }
+    // The v1 row is retained across conversion for recovery; include its attachments too.
+    let legacy: Option<String> = tx
+        .query_row("SELECT payload FROM workspace WHERE id=1", [], |r| r.get(0))
+        .optional()
+        .map_err(|e| e.to_string())?;
+    if let Some(raw) = legacy {
+        let mut value: Value =
+            serde_json::from_str(&raw).map_err(|_| "Invalid legacy workspace")?;
+        strip(&mut value, &ids, &mut removed);
     }
     let recovery = {
         let mut statement = tx
@@ -93,6 +100,17 @@ pub fn purge(db: &mut Connection, payload: &str, session_ids: &[String]) -> Resu
         rows.collect::<Result<Vec<_>, _>>()
             .map_err(|e| e.to_string())?
     };
+    for id in &ids {
+        let mut statement=tx.prepare("SELECT payload FROM session_recovery WHERE session_id=?1 UNION ALL SELECT payload FROM session_records WHERE id=?1").map_err(|e|e.to_string())?;
+        let rows = statement
+            .query_map([id], |r| r.get::<_, String>(0))
+            .map_err(|e| e.to_string())?;
+        for row in rows {
+            let value: Value = serde_json::from_str(&row.map_err(|e| e.to_string())?)
+                .map_err(|_| "Invalid saved conversation")?;
+            attachments(&value, &mut removed);
+        }
+    }
     let mut retained = HashSet::new();
     attachments(&next, &mut retained);
     for (id, raw) in recovery {
@@ -111,6 +129,35 @@ pub fn purge(db: &mut Connection, payload: &str, session_ids: &[String]) -> Resu
         }
     }
     tx.execute("INSERT INTO workspace(id,payload,updated_at) VALUES(1,?1,datetime('now')) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at",[payload]).map_err(|e|e.to_string())?;
+    // Scrub every segmented copy of permanently removed conversations in the same transaction.
+    for id in &ids {
+        tx.execute("DELETE FROM session_recovery WHERE session_id=?1", [id])
+            .map_err(|e| e.to_string())?;
+        tx.execute("DELETE FROM session_records WHERE id=?1", [id])
+            .map_err(|e| e.to_string())?;
+    }
+    let segmented: bool = tx
+        .query_row("SELECT EXISTS(SELECT 1 FROM workspace_head)", [], |r| {
+            r.get(0)
+        })
+        .map_err(|e| e.to_string())?;
+    if segmented {
+        crate::segmented_storage::replace(&tx, &next)?;
+    }
+    // Shared attachments referenced by retained segmented recovery must survive.
+    {
+        let mut statement = tx
+            .prepare("SELECT payload FROM session_recovery")
+            .map_err(|e| e.to_string())?;
+        for row in statement
+            .query_map([], |r| r.get::<_, String>(0))
+            .map_err(|e| e.to_string())?
+        {
+            let value: Value = serde_json::from_str(&row.map_err(|e| e.to_string())?)
+                .map_err(|_| "Invalid recovery")?;
+            attachments(&value, &mut retained);
+        }
+    }
     for id in removed.difference(&retained) {
         tx.execute("DELETE FROM attachments WHERE id=?1", [id])
             .map_err(|e| e.to_string())?;
