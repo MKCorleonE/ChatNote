@@ -1,14 +1,10 @@
-# 0.15.0 开发预览补充 · 2026-10-19
+# ChatNote 隐私政策 · 0.15.0 · 2026-10-19
 
-整理稿与部分稿跟随对话本地保存；全文检索在本机进行，搜索不调用模型。导出范围可选，完整备份仍保留全部工作区。数据库首次转为按会话存储前，会在旁边保存chatnote.pre-v015.sqlite升级前备份；该文件可能包含旧记录，和用户导出备份一样独立保留，回收站永久清理不改写它。需要清除此备份时先确认不再需要回退，并关闭应用。凭据仍在系统凭据库，不进入新的会话存储记录。
-
-# ChatNote 隐私政策 · Privacy policy · 隱私政策
-
-本文件与src/locales三语政策文案同步；完整应用使用与边界见V0.12.0_VALIDATION.md。
+本文件从应用当前三语政策同步。客户端在本机保存，官网统计说明另见官网隐私政策；更新签名、安装和数据迁移验证见[V0.15.0_VALIDATION.md](V0.15.0_VALIDATION.md)。
 
 ## 简体中文
 
-生效日期：2026年10月13日 · ChatNote 0.12.0
+生效日期：2026-10-19 · ChatNote 0.15.0
 
 ChatNote是由独立开发者维护、以本机保存为主的学习笔记应用。本政策说明当前桌面版、本次选择的模型服务和自愿联系渠道如何处理数据。查看本页不会发送数据，也不会替你开通服务。
 
@@ -26,7 +22,7 @@ API密钥、ChatGPT登录令牌及客户端注册密文由系统凭据库保管�
 
 ### 4. 服务商与网络服务
 
-登录、模型目录检查、余额查询和模型请求会连接你配置的服务。连接及额度检查不会自动生成回答。这些服务会收到IP地址、认证信息等正常网络数据，其服务地域、保留时间、训练用途、收费和删除规则由自身政策及你的账号条款决定。请仅使用可信地址。ChatNote无法保证删除已经发送给服务商的数据；文档临时文件清理失败时会尽可能提示。
+登录、模型目录检查、余额查询和模型请求会连接你配置的服务。连接及额度检查不会自动生成回答。这些服务会收到IP地址、认证信息等正常网络数据，其服务地域、保留时间、训练用途、收费和删除规则由自身政策及你的账号条款决定。请仅使用可信地址。ChatNote无法保证删除已经发送给服务商的数据；文档临时文件清理失败时会尽可能提示。 ChatNote 启动后检查公开版本文件，并可能下载带签名的安装包。托管服务会接收 IP 地址等常规网络信息；不会附带聊天、笔记、API 密钥或 ChatGPT 凭据。下载完成后，在下次启动或点击“重启并更新”时安装。
 
 ### 5. 保留与删除
 
@@ -34,7 +30,7 @@ API密钥、ChatGPT登录令牌及客户端注册密文由系统凭据库保管�
 
 ### 6. 备份、导出与自愿反馈
 
-完整工作区备份包含正常对话、回收站对话及其引用附件，但不包含凭据。笔记和思维导图包含你导出的对话材料，未决定分享前请保持私密。联系页只展示邮箱及小红书号，复制不会发送消息。主动联系开发者时，你的邮箱或账号名称以及自愿发送的内容可能为回应而被阅读、保留；邮箱和小红书平台按各自政策处理通信。请勿发送密钥、登录令牌或不必要的私人对话。
+完整工作区备份包含正常对话、回收站对话及其引用附件，但不包含凭据。笔记和思维导图包含你导出的对话材料，未决定分享前请保持私密。联系页只展示邮箱及小红书号，复制不会发送消息。主动联系开发者时，你的邮箱或账号名称以及自愿发送的内容可能为回应而被阅读、保留；邮箱和小红书平台按各自政策处理通信。请勿发送密钥、登录令牌或不必要的私人对话。 存储升级会在数据库旁保留独立的升级前 SQLite 备份；和导出的备份一样，它可能包含旧记录，回收站清理不会改写该文件。导出时可排除私人笔记、历史问答版本、附件文件和整理稿，追问所需的原文出处仍会保留。
 
 ### 7. 你的选择与政策更新
 
@@ -46,7 +42,7 @@ API密钥、ChatGPT登录令牌及客户端注册密文由系统凭据库保管�
 
 ## 繁體中文
 
-生效日期：2026年10月13日 · ChatNote 0.12.0
+生效日期：2026-10-19 · ChatNote 0.15.0
 
 ChatNote由獨立開發者維護，是以本機儲存為主的學習筆記應用程式。本政策說明目前桌面版、所選模型服務及自願聯絡管道如何處理資料。查看本頁不會傳送資料，也不會替你開通服務。
 
@@ -64,7 +60,7 @@ API金鑰、ChatGPT登入權杖及用戶端註冊秘密資訊由系統認證儲�
 
 ### 4. 服務商及網路服務
 
-登入、模型目錄檢查、餘額查詢及模型請求會連線至你設定的服務。連線及額度檢查不會自動產生回答。這些服務會收到IP位址、驗證資訊等一般網路資料，其服務地區、保留時間、訓練用途、收費及刪除規則由自身政策及你的帳號條款決定。請只使用可信位址。ChatNote無法保證刪除已傳送給服務商的資料；文件暫存檔清理失敗時會盡可能提示。
+登入、模型目錄檢查、餘額查詢及模型請求會連線至你設定的服務。連線及額度檢查不會自動產生回答。這些服務會收到IP位址、驗證資訊等一般網路資料，其服務地區、保留時間、訓練用途、收費及刪除規則由自身政策及你的帳號條款決定。請只使用可信位址。ChatNote無法保證刪除已傳送給服務商的資料；文件暫存檔清理失敗時會盡可能提示。 ChatNote 啟動後檢查公開版本檔，並可能下載附簽章的安裝包。託管服務會接收 IP 位址等一般網路資訊；不會附帶聊天、筆記、API 金鑰或 ChatGPT 憑證。下載完成後，在下次啟動或點選「重新啟動並更新」時安裝。
 
 ### 5. 保留及刪除
 
@@ -72,7 +68,7 @@ API金鑰、ChatGPT登入權杖及用戶端註冊秘密資訊由系統認證儲�
 
 ### 6. 備份、匯出及自願回饋
 
-完整工作區備份包含一般對話、資源回收筒對話及其引用附件，但不包含認證資訊。筆記與心智圖包含你匯出的對話材料，決定分享前請保持私密。聯絡頁只顯示電子郵件及小紅書帳號，複製不會傳送訊息。主動聯絡開發者時，你的電子郵件或帳號名稱及自願傳送的內容可能為回應而被閱讀、保留；電子郵件與小紅書平台依各自政策處理通訊。請勿傳送金鑰、登入權杖或不必要的私人對話。
+完整工作區備份包含一般對話、資源回收筒對話及其引用附件，但不包含認證資訊。筆記與心智圖包含你匯出的對話材料，決定分享前請保持私密。聯絡頁只顯示電子郵件及小紅書帳號，複製不會傳送訊息。主動聯絡開發者時，你的電子郵件或帳號名稱及自願傳送的內容可能為回應而被閱讀、保留；電子郵件與小紅書平台依各自政策處理通訊。請勿傳送金鑰、登入權杖或不必要的私人對話。 儲存升級會在資料庫旁保留獨立的升級前 SQLite 備份；和匯出的備份一樣，它可能包含舊紀錄，資源回收筒清理不會改寫該檔案。匯出時可排除私人筆記、歷史問答版本、附件檔案和整理稿，追問所需的原文出處仍會保留。
 
 ### 7. 你的選擇及政策更新
 
@@ -84,7 +80,7 @@ API金鑰、ChatGPT登入權杖及用戶端註冊秘密資訊由系統認證儲�
 
 ## English
 
-Effective: 13 October 2026 · ChatNote 0.12.0
+Effective: 19 October 2026 · ChatNote 0.15.0
 
 ChatNote is a local-first learning notebook maintained by an independent developer. This policy describes the data handled by the current desktop app, your model providers, and voluntary contact channels. Reading this page does not send data or enroll you in a service.
 
@@ -102,7 +98,7 @@ When you send a question, the selected provider receives the current question, m
 
 ### 4. Provider and network services
 
-Sign-in, model directory checks, balance checks, and model requests communicate with the configured service. Connection and quota checks do not automatically generate an answer. Those services receive normal network information such as IP addresses and authentication data. Their location, retention, model training, charges, and deletion rules follow their own policies and your account terms. Use only endpoints you trust. ChatNote does not guarantee removal of data already sent to a provider; document cleanup failures are reported when available.
+Sign-in, model directory checks, balance checks, and model requests communicate with the configured service. Connection and quota checks do not automatically generate an answer. Those services receive normal network information such as IP addresses and authentication data. Their location, retention, model training, charges, and deletion rules follow their own policies and your account terms. Use only endpoints you trust. ChatNote does not guarantee removal of data already sent to a provider; document cleanup failures are reported when available. ChatNote checks a public version file after startup and may download a signed installer. The hosting provider receives normal network metadata such as your IP address. Chats, notes, API keys and ChatGPT credentials are not included. Downloaded updates install on the next launch or when you choose Restart and update.
 
 ### 5. Retention and deletion
 
@@ -110,7 +106,7 @@ Deleting a conversation moves the whole conversation, its follow-ups and attachm
 
 ### 6. Backups, exports, and voluntary feedback
 
-A full workspace backup includes active and recycled conversations and their referenced attachments, but excludes credentials. Notes and mind maps include the conversation material you export. Keep these files private unless you choose to share them. The contact page displays an email address and Xiaohongshu ID; copying them does not send a message. If you contact the developer, your address or account name and the content you voluntarily send may be read and retained to respond. Email and Xiaohongshu handle that communication under their own policies. Never send keys, sign-in tokens, or unnecessary private conversations.
+A full workspace backup includes active and recycled conversations and their referenced attachments, but excludes credentials. Notes and mind maps include the conversation material you export. Keep these files private unless you choose to share them. The contact page displays an email address and Xiaohongshu ID; copying them does not send a message. If you contact the developer, your address or account name and the content you voluntarily send may be read and retained to respond. Email and Xiaohongshu handle that communication under their own policies. Never send keys, sign-in tokens, or unnecessary private conversations. Storage upgrades preserve an independent pre-upgrade SQLite backup beside the database. Like exported backups, it may contain older records and is not modified by recycle-bin cleanup. Export controls let you exclude private notes, saved message versions, attachment files and organized drafts; exact sources required by follow-ups remain included.
 
 ### 7. Your choices and policy changes
 
