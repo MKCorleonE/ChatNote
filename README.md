@@ -66,3 +66,12 @@ v0.4.0 新增右侧调宽、输入框内模型/连接/思考强度、自动目�
 - [英文功能建议](FEATURE_REQUEST.md)
 
 旧的 `CodexAnnotation-demo.zip`、同名 HTML、视频和提案保留为历史材料。新的产品开发按 ChatNote 计划推进。
+
+## Star 历史
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/star-history-dark.svg">
+  <img alt="ChatNote Star 历史面积图" src=".github/assets/star-history-light.svg" width="900">
+</picture>
+
+图表每日自动更新，随 GitHub 明暗主题切换。[数据与更新说明](docs/STAR_HISTORY.md)。
