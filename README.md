@@ -1,5 +1,7 @@
 # ChatNote
 
+当前正式版：[0.16.1](https://github.com/MKCorleonE/ChatNote/releases/tag/v0.16.1) · [本版验证](docs/V0.16.1_VALIDATION.md)。修复贡献者主页入口，新增pppp，包含支线汇合与全屏画布改进。
+
 [官网与下载](https://mkcorleone.github.io/chatnote-site/) · [正式发行](https://github.com/MKCorleonE/ChatNote/releases) · [参与贡献](CONTRIBUTING.md)
 
 源码与版本历史位于 [ChatNote](https://github.com/MKCorleonE/ChatNote)，采用 [PolyForm Perimeter 1.0.1](LICENSE)，限制将本软件用于向他人提供竞争产品。这是源码可见许可，并非 OSI 标准开源许可；第三方组件保留各自许可证。
