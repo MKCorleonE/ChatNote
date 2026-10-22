@@ -1,0 +1,67 @@
+name: Update star history
+
+on:
+  schedule:
+    - cron: '17 22 * * *' # 每天北京时间 06:17；GitHub 调度可能延迟。
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/star-history.yml
+      - scripts/style-star-history.mjs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: star-history
+  cancel-in-progress: false
+
+jobs:
+  update:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Generate light and dark area charts
+        uses: leereilly/star-chart@e7fa78bdf8f78da6c3feeb3a97b528fd97d62727 # v0.3
+        with:
+          token: ${{ github.token }}
+          repository: MKCorleonE/ChatNote
+          output: .github/assets/star-history.svg
+          style: area
+          dual_theme: true
+          period: all
+          width: 900
+          height: 300
+          title: ChatNote
+          date_format: iso
+          axis_font_size: 12
+          show_change: false
+          show_legend: false
+          animation: none
+
+      - name: Apply ChatNote mint colors
+        run: node scripts/style-star-history.mjs
+
+      - name: Commit chart updates
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add -- .github/assets/star-history-light.svg .github/assets/star-history-dark.svg
+          if git diff --cached --quiet; then
+            echo 'Star history is unchanged.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: refresh star history'
+          gh auth setup-git
+          git pull --rebase origin main
+          git push origin HEAD:main
