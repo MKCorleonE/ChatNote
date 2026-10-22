@@ -11,3 +11,5 @@
 @media(prefers-reduced-motion:reduce){.canvas-node,.map-dialog,.map-inspector,.merge-dialog{animation:none!important}.map-world,.canvas-node,.map-toolbar button,.map-inspector footer button{transition:none!important}.map-toolbar button:active,.map-inspector footer button:active{transform:none}}
 
 .merge-material{width:100%;padding:15px 18px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:11px;background:var(--soft);font-size:12px}.merge-material h3{display:flex;align-items:center;gap:8px;margin:0;font-size:13px;font-weight:550}.merge-material pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow:auto;padding:12px;background:var(--bg);border-radius:8px;font:11px/1.8 system-ui,sans-serif}.merge-material summary{cursor:pointer;color:var(--muted);font-size:11px}.merge-material .merge-source-links button{background:var(--surface)}
+
+.map-inspector>header button{font:inherit;font-size:11px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:4px 8px;cursor:pointer}.map-inspector>header button:hover{color:var(--ink);background:var(--soft);border-color:var(--accent)}
