@@ -682,7 +682,7 @@
   "Your selection is remembered for this conversation or follow-up. New history stays excluded until selected; the current question is always included.": "选择会在本条主线或追问中保留。新产生的历史需要重新勾选才会携带；本次问题始终携带。",
   "Context was shortened to fit your budget. You can inspect the sent context beside the answer.": "上下文已按预算缩略，可在回答旁查看实际发送的内容。",
   "Applied to every chat request: selected text above this character budget is shortened into labelled excerpts. You can inspect the result before sending or beside the answer. This is not a token limit or an answer-length limit; original history remains saved.": "每次聊天请求都应用此字符预算；超出时转为标记清楚的摘录。可主动预览或在回答旁查看实际发送内容。这不是Token上限或回答长度限制，原始历史仍完整保存。",
-  "privacy.effective": "生效日期：2026-10-22 · ChatNote 0.16.0",
+  "privacy.effective": "生效日期：2026-10-22 · ChatNote 0.16.1",
   "privacy.introduction": "ChatNote是由独立开发者维护、以本机保存为主的学习笔记应用。本政策说明当前桌面版、本次选择的模型服务和自愿联系渠道如何处理数据。查看本页不会发送数据，也不会替你开通服务。",
   "privacy.local.title": "1. 本机保存的数据",
   "privacy.local.body": "对话、回答、精确原文锚点、追问、个人笔记、草稿、附件、连接元数据、偏好和回收站时间保存在你的设备上。桌面版使用本机SQLite数据库，浏览器预览使用浏览器存储。当前没有开发者托管的对话同步、广告或内置统计上传。ChatNote不会加密本机数据库和导出文件，请妥善保护设备和备份。",
@@ -835,5 +835,8 @@
   "Find contributor GitHub profiles in Improve ChatNote together.": "在一起改进 ChatNote 中查看贡献者 GitHub 主页。",
   "Create fewer than 2000 conversations before merging.": "会话数量已达上限，请先整理会话再新建汇合讨论。",
   "Drag to move · scroll to zoom": "拖动平移 · 滚轮缩放",
-  "Print": "打印"
+  "Print": "打印",
+  "Contributor profile links": "贡献者主页链接",
+  "Fix opening contributor GitHub profiles in the system browser.": "修复贡献者 GitHub 主页无法在系统浏览器打开的问题。",
+  "Add pppp to the contributor list.": "贡献者名单新增 pppp。"
 }

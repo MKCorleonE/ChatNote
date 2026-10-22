@@ -682,7 +682,7 @@
   "Your selection is remembered for this conversation or follow-up. New history stays excluded until selected; the current question is always included.": "選擇會在這條主線或追問中保留。新產生的歷史需重新勾選才會攜帶；本次問題一律攜帶。",
   "Context was shortened to fit your budget. You can inspect the sent context beside the answer.": "上下文已依預算縮略，可在回答旁查看實際傳送的內容。",
   "Applied to every chat request: selected text above this character budget is shortened into labelled excerpts. You can inspect the result before sending or beside the answer. This is not a token limit or an answer-length limit; original history remains saved.": "每次聊天請求都套用此字元預算；超出時轉為清楚標示的摘錄。可主動預覽或在回答旁查看實際傳送內容。這不是Token上限或回答長度限制，原始歷史仍完整儲存。",
-  "privacy.effective": "生效日期：2026-10-22 · ChatNote 0.16.0",
+  "privacy.effective": "生效日期：2026-10-22 · ChatNote 0.16.1",
   "privacy.introduction": "ChatNote由獨立開發者維護，是以本機儲存為主的學習筆記應用程式。本政策說明目前桌面版、所選模型服務及自願聯絡管道如何處理資料。查看本頁不會傳送資料，也不會替你開通服務。",
   "privacy.local.title": "1. 本機儲存的資料",
   "privacy.local.body": "對話、回答、精確原文錨點、追問、個人筆記、草稿、附件、連線中繼資料、偏好及資源回收筒時間儲存在你的裝置上。桌面版使用本機SQLite資料庫，瀏覽器預覽使用瀏覽器儲存。目前沒有開發者託管的對話同步、廣告或內建統計上傳。ChatNote不會加密本機資料庫及匯出檔案，請妥善保護裝置與備份。",
@@ -835,5 +835,8 @@
   "Find contributor GitHub profiles in Improve ChatNote together.": "在一起改進 ChatNote 中查看貢獻者 GitHub 首頁。",
   "Create fewer than 2000 conversations before merging.": "會話數量已達上限，請先整理會話再新增匯合討論。",
   "Drag to move · scroll to zoom": "拖動平移 · 滾輪縮放",
-  "Print": "列印"
+  "Print": "列印",
+  "Contributor profile links": "貢獻者首頁連結",
+  "Fix opening contributor GitHub profiles in the system browser.": "修復貢獻者 GitHub 首頁無法在系統瀏覽器開啟的問題。",
+  "Add pppp to the contributor list.": "貢獻者名單新增 pppp。"
 }
