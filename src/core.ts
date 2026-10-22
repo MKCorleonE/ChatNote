@@ -1,3 +1,4 @@
+import { validateSessionExtensions } from './workspace-extensions';
 import type { Anchor, Branch, ContextItem, ContextReport, Message, Session, Workspace } from './types';
 import { migrateConnections } from './connections';
 import { resolveLanguage, translator, type Language } from './i18n';
@@ -110,6 +111,7 @@ export function validateWorkspace(data: unknown): asserts data is Workspace {
     const branchIds = new Set<string>();
     for (const b of s.branches) { if (!b || typeof b.id !== 'string' || branchIds.has(b.id) || !Array.isArray(b.messages) || !Array.isArray(b.sourceContext) || b.sourceContext.some(i => !i || !['user','assistant'].includes(i.role) || typeof i.content !== 'string') || !b.anchor || !validAnchor(s, b.anchor)) throw new Error('A saved annotation has an invalid source.'); branchIds.add(b.id); }
     for (const b of s.branches) { if (b.parentId !== null) { const p = s.branches.find(p => p.id === b.parentId); if (!p || !threadMessages(p).some(m => m.id === b.anchor.messageId && m.revision === b.anchor.revision)) throw new Error('Invalid parent annotation.'); } else if (!threadMessages(s).some(m => m.id === b.anchor.messageId && m.revision === b.anchor.revision)) throw new Error('Invalid main source.'); ancestry(s, b.id); }
+    validateSessionExtensions(s,checkAttachments);
     if (!s.view || !['closed','tree','branch'].includes(s.view.mode) || typeof s.view.drafts !== 'object' || !s.view.positions || !Array.isArray(s.view.collapsed)) throw new Error('Invalid view state.');
     const choices=s.view.contextSelections;if(choices!==undefined&&(!choices||typeof choices!=='object'||Array.isArray(choices)||Object.keys(choices).length>2000||Object.entries(choices).some(([key,ids])=>key.length>400||!Array.isArray(ids)||ids.length>20000||ids.some(id=>typeof id!=='string'||id.length>400))))throw new Error('Invalid context selection.');
   }

@@ -23,8 +23,10 @@ test('Image attachments load local thumbnails, open a larger preview and keep or
   await waitFor(()=>expect(screen.getByRole('img',{name:'study.png'}).getAttribute('src')).toBe('data:image/png;base64,YWJj'));await user.click(screen.getByRole('button',{name:'Preview image · study.png'}));expect(screen.getByRole('dialog',{name:'Image preview'})).toBeDefined();expect(screen.getAllByRole('img',{name:'study.png'})).toHaveLength(2);
   await user.click(screen.getByRole('button',{name:'Save attachment'}));expect(media.save).toHaveBeenCalledWith(attachment);await user.keyboard('{Escape}');expect(screen.queryByRole('dialog',{name:'Image preview'})).toBeNull();expect(attachment).toEqual(before);
 });
-test('Map expansion replays on reopening rather than relying on a retained CSS animation',async()=>{
-  const previous=Object.getOwnPropertyDescriptor(HTMLElement.prototype,'animate'),animate=vi.fn();Object.defineProperty(HTMLElement.prototype,'animate',{configurable:true,value:animate});
-  try {render(<MindMap session={exampleSession()}/>);const card=document.querySelector('.map-card.main') as HTMLDetailsElement,user=userEvent.setup();await user.click(card.querySelector('summary')!);await waitFor(()=>expect(animate).toHaveBeenCalledTimes(1));await user.click(card.querySelector('summary')!);await waitFor(()=>expect(card.open).toBe(false));await user.click(card.querySelector('summary')!);await waitFor(()=>expect(animate).toHaveBeenCalledTimes(2));}
-  finally {if(previous)Object.defineProperty(HTMLElement.prototype,'animate',previous);else delete (HTMLElement.prototype as unknown as {animate?:unknown}).animate;}
+test('Canvas details reopen with a fresh panel and leave node geometry compact',async()=>{
+  const user=userEvent.setup();render(<MindMap session={exampleSession()}/>);
+  const card=document.querySelector('.canvas-node.main') as HTMLElement;
+  await user.click(card.querySelector('button')!);expect(screen.getByRole('complementary',{name:'Discussion details'})).toBeDefined();
+  await user.click(screen.getByRole('button',{name:'Close details'}));expect(screen.queryByRole('complementary')).toBeNull();
+  await user.click(card.querySelector('button')!);expect(screen.getByRole('complementary',{name:'Discussion details'})).toBeDefined();expect(card.style.height).toBe('152px');
 });

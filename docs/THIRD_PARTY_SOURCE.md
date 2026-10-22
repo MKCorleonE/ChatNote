@@ -13,3 +13,7 @@ ChatNote 的 PolyForm Perimeter 条款只覆盖有权授权的项目代码；第
 Cargo 及 npm 的其他锁定版本、原始许可声明见 `src-tauri/Cargo.lock`、`package-lock.json` 和 `src/third-party-notices.json`。源码包中的双重许可按允许的兼容许可使用；本项目未将第三方源码中的原有声明删除或改为项目许可。
 
 图标来源与作者确认记录见 `docs/branding/README.md`。公开截图为既有合成学习场景；私人工作区、API 凭据与更新签名私钥不随源码分发。
+
+## 0.16.0 交互参考
+
+本版分支汇合与画布设计参考 [Branch Local](https://github.com/sinpangky/branch-local)（sinpangky）和 [ThoughtDAG](https://github.com/chenxiachan/thoughtdag)（Xia Chen）。两者上游标明 MIT；ChatNote 按自身会话/锚点结构实现，没有将上游应用作为运行依赖。使用了它们的产品思路与交互参考，未整体移植上游应用。上游源码及许可可在相应仓库查阅；ChatNote 自有代码仍按项目 LICENSE 提供。

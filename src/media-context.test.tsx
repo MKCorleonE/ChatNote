@@ -37,7 +37,7 @@ test('Text attachment size counts toward history budget, and unchecked attachmen
   const report=contextFor(s,null,8000);expect(report.summarized).toBe(true);expect(report.characters).toBeLessThanOrEqual(8000);expect(report.items.flatMap(i=>i.attachments??[])).toEqual([]);
   const selected=selectContext(report,[report.candidates!.length-1]);expect(selected.summarized).toBe(false);expect(selected.items[0].content).toBe('LATEST');
 });
-test('Map width changes all cards, and exported maps keep resizing and shared connector geometry without scripts',()=>{
-  const s=exampleSession();render(<MindMap session={s}/>);fireEvent.change(screen.getByRole('slider',{name:'Card width'}),{target:{value:'600'}});expect((document.querySelector('.map-card') as HTMLElement).style.width).toBe('600px');
-  const html=buildMindMap(s,'en');expect(html).toContain('resize:horizontal');expect(html).toContain('class="mind-map"');expect(html).toContain('.map-row>ul:before');expect(html).not.toContain('<script');
+test('Canvas scaling keeps compact card geometry and offline exports include navigation controls',()=>{
+  const s=exampleSession();render(<MindMap session={s}/>);fireEvent.click(screen.getByRole('button',{name:'Zoom in'}));expect((document.querySelector('.canvas-node') as HTMLElement).style.width).toBe('280px');
+  const html=buildMindMap(s,'en');expect(html).toContain('canvas-node');expect(html).toContain('map-edge');expect(html).toContain('data-action="fit"');expect(html).toContain("script-src 'sha256-");
 });

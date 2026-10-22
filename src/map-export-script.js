@@ -1,0 +1,26 @@
+// Static offline controls. User content is escaped HTML, never executable data.
+(() => {
+  'use strict';
+  document.documentElement.classList.add('map-js');
+  const viewport=document.querySelector('.map-viewport'),world=document.querySelector('.map-world'),work=document.querySelector('.map-workbench');
+  const cards=[...document.querySelectorAll('.canvas-node')],edges=[...document.querySelectorAll('.map-edge')];
+  const inspector=document.querySelector('.map-inspector'),content=document.querySelector('.map-inspector-scroll'),output=document.querySelector('output');
+  const camera={x:24,y:24,zoom:.8};let gesture=null,moved=false;
+  const position=card=>({x:Number.parseFloat(card.style.left),y:Number.parseFloat(card.style.top)});
+  function update(){world.style.transform=`translate(${camera.x}px,${camera.y}px) scale(${camera.zoom})`;output.textContent=Math.round(camera.zoom*100)+'%';work.classList.toggle('map-distant',camera.zoom<.6);}
+  function zoom(factor,x=viewport.clientWidth/2,y=viewport.clientHeight/2){const next=Math.max(.15,Math.min(2,camera.zoom*factor));camera.x=x-(x-camera.x)/camera.zoom*next;camera.y=y-(y-camera.y)/camera.zoom*next;camera.zoom=next;update();}
+  function fit(){const visible=cards.filter(c=>!c.hidden);if(!visible.length)return;const positions=visible.map(position),minX=Math.min(...positions.map(p=>p.x)),minY=Math.min(...positions.map(p=>p.y)),maxX=Math.max(...positions.map(p=>p.x+280)),maxY=Math.max(...positions.map(p=>p.y+152));camera.zoom=Math.max(.15,Math.min(1,(viewport.clientWidth-80)/(maxX-minX),(viewport.clientHeight-80)/(maxY-minY)));camera.x=(viewport.clientWidth-(maxX-minX)*camera.zoom)/2-minX*camera.zoom;camera.y=(viewport.clientHeight-(maxY-minY)*camera.zoom)/2-minY*camera.zoom;update();}
+  function route(){for(const edge of edges){const a=cards[Number(edge.dataset.source)],b=cards[Number(edge.dataset.target)],p=position(a),q=position(b);edge.hidden=a.hidden||b.hidden;edge.style.display=edge.hidden?'none':'';if(edge.dataset.kind==='main'){const x=p.x+140,y=p.y+152;edge.setAttribute('d',`M ${x} ${y} C ${x} ${y+28},${q.x+140} ${q.y-28},${q.x+140} ${q.y}`);}else{const reverse=q.x<=p.x,sx=p.x+(reverse?0:280),tx=q.x+(reverse?280:0),bend=reverse?Math.min(sx,tx)-90:(sx+tx)/2;edge.setAttribute('d',`M ${sx} ${p.y+76} C ${bend} ${p.y+76},${bend} ${q.y+76},${tx} ${q.y+76}`);}}}
+  function inspect(card){cards.forEach(c=>c.classList.toggle('inspected',c===card));const template=document.getElementById('detail-'+card.dataset.index);content.replaceChildren(template.content.cloneNode(true));inspector.hidden=false;const active=new Set([card.dataset.index]);let changed=true;while(changed){changed=false;for(const e of edges)if(active.has(e.dataset.target)&&!active.has(e.dataset.source)){active.add(e.dataset.source);changed=true;}}cards.forEach(c=>c.classList.toggle('receded',!active.has(c.dataset.index)));edges.forEach(e=>e.classList.toggle('on-path',active.has(e.dataset.source)&&active.has(e.dataset.target)));}
+  function close(){inspector.hidden=true;cards.forEach(c=>c.classList.remove('inspected','receded'));edges.forEach(e=>e.classList.remove('on-path'));}
+  document.addEventListener('click',event=>{const control=event.target.closest('[data-action]');if(!control)return;const action=control.dataset.action;if(action==='in')zoom(1.2);if(action==='out')zoom(1/1.2);if(action==='fit')fit();if(action==='close')close();if(action==='print')window.print();if(action==='arrange'){cards.forEach(c=>{c.style.left=c.dataset.x+'px';c.style.top=c.dataset.y+'px';});route();fit();}});
+  cards.forEach(card=>card.querySelector('.canvas-node-open').addEventListener('click',()=>{inspect(card);}));
+  viewport.addEventListener('wheel',event=>{event.preventDefault();const rect=viewport.getBoundingClientRect();zoom(Math.exp(-event.deltaY*.0015),event.clientX-rect.left,event.clientY-rect.top);},{passive:false});
+  viewport.addEventListener('pointerdown',event=>{if(event.button!==0)return;const card=event.target.closest('.canvas-node');if(card&&!event.target.closest('.canvas-node-heading'))return;event.preventDefault();const p=card?position(card):null;gesture={x:event.clientX,y:event.clientY,cx:camera.x,cy:camera.y,card,p};moved=false;viewport.setPointerCapture(event.pointerId);work.classList.add('is-moving');});
+  viewport.addEventListener('pointermove',event=>{if(!gesture)return;const dx=event.clientX-gesture.x,dy=event.clientY-gesture.y;if(Math.abs(dx)+Math.abs(dy)>4)moved=true;if(gesture.card){gesture.card.style.left=Math.max(0,gesture.p.x+dx/camera.zoom)+'px';gesture.card.style.top=Math.max(0,gesture.p.y+dy/camera.zoom)+'px';route();}else{camera.x=gesture.cx+dx;camera.y=gesture.cy+dy;update();}});
+  const end=()=>{gesture=null;work.classList.remove('is-moving');};viewport.addEventListener('pointerup',end);viewport.addEventListener('pointercancel',end);
+  viewport.addEventListener('keydown',event=>{if(event.target!==viewport)return;if(['+','=','-','0'].includes(event.key)){event.preventDefault();event.key==='0'?fit():zoom(event.key==='-'?1/1.2:1.2);}if(event.key==='Escape')close();});
+  window.addEventListener('resize',fit);
+  if(typeof ResizeObserver!=='undefined')new ResizeObserver(fit).observe(viewport);
+  update();fit();
+})();

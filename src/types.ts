@@ -1,10 +1,13 @@
 export type Status = 'complete' | 'streaming' | 'stopped' | 'error';
 export interface Attachment { id: string; name: string; mime: string; size: number; kind: 'text' | 'image' | 'document' }
 import type { Language } from './i18n';
-export interface Message { id: string; revision: string; role: 'user' | 'assistant'; text: string; status: Status; createdAt: number; attachments?:Attachment[]; questionGroupId?:string; model?: string; reasoningEffort?: ReasoningEffort; connectionId?: string; connectionName?: string; error?: string; promotedFrom?: string; context?: ContextReport; phase?:'connecting'|'generating'; completedAt?:number; firstTextAt?:number }
+export interface MergeSource { sessionId:string; branchId:string; title:string; anchor:Anchor; messageId:string; versions:{id:string;revision:string}[]; context:ContextItem[] }
+export interface MergeRecord { sources:MergeSource[]; createdAt:number }
+export interface MapView { positions:Record<string,{x:number;y:number}>; collapsed:string[]; camera?:{x:number;y:number;zoom:number} }
+export interface Message { merge?:MergeRecord; id: string; revision: string; role: 'user' | 'assistant'; text: string; status: Status; createdAt: number; attachments?:Attachment[]; questionGroupId?:string; model?: string; reasoningEffort?: ReasoningEffort; connectionId?: string; connectionName?: string; error?: string; promotedFrom?: string; context?: ContextReport; phase?:'connecting'|'generating'; completedAt?:number; firstTextAt?:number }
 export interface Anchor { messageId: string; revision: string; start: number; end: number; quote: string; prefix: string; suffix: string }
 export interface Branch { id: string; parentId: string | null; anchor: Anchor; messages: Message[]; activeMessageIds?:string[]; messageHistory?: Message[][]; createdAt: number; sourceContext: ContextItem[]; note?:string }
-export interface View { mode: 'closed' | 'branch' | 'tree'; branchId: string | null; drafts: Record<string, string>; positions: Record<string, { messageId: string; offset: number; scrollTop: number }>; collapsed: string[]; attachmentDrafts?:Record<string,Attachment[]>; contextSelections?:Record<string,string[]>; draftSource?:{anchor:Anchor;parentId:string|null} }
+export interface View { map?:MapView; mode: 'closed' | 'branch' | 'tree'; branchId: string | null; drafts: Record<string, string>; positions: Record<string, { messageId: string; offset: number; scrollTop: number }>; collapsed: string[]; attachmentDrafts?:Record<string,Attachment[]>; contextSelections?:Record<string,string[]>; draftSource?:{anchor:Anchor;parentId:string|null} }
 export interface LearningDraft { id:string; text:string; updatedAt:number; sourceVersion:string; partial:boolean; model?:string; requestId?:string }
 export interface Session { id: string; title: string; createdAt: number; updatedAt: number; messages: Message[]; activeMessageIds?:string[]; messageHistory?: Message[][]; branches: Branch[]; view: View; example?: boolean; learningDraft?:LearningDraft; learningHistory?:LearningDraft[] }
 export type ProviderKind = 'openai' | 'chatgpt' | 'compatible';

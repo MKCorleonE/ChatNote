@@ -9,4 +9,5 @@ import './navigation.css';
 import './appearance.css';
 import './learning.css';
 import './upgrade.css';
+import './map-canvas.css';
 createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);
